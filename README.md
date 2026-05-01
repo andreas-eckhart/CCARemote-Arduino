@@ -1,6 +1,6 @@
 # CCARemote – Arduino Bibliothek
 
-Bibliothek für den ESP32, mit der Schüler ihren Mikrocontroller ganz einfach über die **CCA Remote App** steuern können. Die erforderliche App **CCA Remote** ist für Android und iOS kostenlos verfügbar.
+Flexible Steuerung von Mikrocontrollern über Bluetooth Low Energy (BLE) oder WLAN (WiFi). Die erforderliche App **CCA Remote** ist für Android und iOS kostenlos verfügbar.
 
 Unterstützte Protokolle:
 - **Bluetooth Low Energy (BLE)**
@@ -279,3 +279,8 @@ void loop() {
 - **Board:** ESP32 (beliebiges Modell)
 - **Arduino IDE:** 2.x empfohlen
 - **ESP32-Paket:** Boardverwalter → `esp32` von Espressif
+
+---
+
+## Hinweis
+Diese Bibliothek basiert auf der Diplomarbeit von Lucas E. und Enes D. im Rahmen ihrer Ausbildung an der HTL Anichstraße. Keine Gewährleistung.
