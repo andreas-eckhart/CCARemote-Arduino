@@ -283,4 +283,4 @@ void loop() {
 ---
 
 ## Hinweis
-Diese Bibliothek basiert auf der Diplomarbeit von Lucas E. und Enes D. im Rahmen ihrer Ausbildung an der HTL Anichstraße. Keine Gewährleistung.
+Diese Bibliothek basiert auf der Diplomarbeit von Lucas E. und Enes D. an der HTL Anichstraße. Die Nutzung erfolgt auf eigene Verantwortung – es wird keine Gewährleistung für Richtigkeit, Vollständigkeit oder Eignung für einen bestimmten Zweck übernommen.
