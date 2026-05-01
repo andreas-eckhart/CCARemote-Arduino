@@ -1,10 +1,11 @@
 # CCARemote – Arduino Bibliothek
 
-Bibliothek für den ESP32, mit der Schüler ihren Mikrocontroller ganz einfach über die **CCA Remote App** steuern können.
+Bibliothek für den ESP32, mit der Schüler ihren Mikrocontroller ganz einfach über die **CCA Remote App** steuern können. Die erforderliche App **CCA Remote** ist für Android und iOS kostenlos verfügbar.
 
 Unterstützte Protokolle:
 - **Bluetooth Low Energy (BLE)**
 - **WiFi (WLAN-Hotspot + HTTP)**
+- **MQTT** (in Arbeit)
 
 ---
 
@@ -23,8 +24,6 @@ Unterstützte Protokolle:
 | `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` |
 
 > Beide Klassen haben dieselbe API – wer BLE kennt, kann sofort auf WiFi wechseln.
-
-> **Hinweis:** MQTT-Unterstützung (`CCARemoteMQTT`) ist in Arbeit und noch nicht verfügbar.
 
 ---
 
