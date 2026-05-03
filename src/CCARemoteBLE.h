@@ -1,3 +1,12 @@
+/*
+ * CCARemoteBLE.h – Bluetooth Low Energy (BLE) Class
+ *
+ * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
+ * Extended by A. Eckhart with kind permission of the original authors.
+ *
+ * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ */
+
 #ifndef CCAREMOTE_BLE_H
 #define CCAREMOTE_BLE_H
 

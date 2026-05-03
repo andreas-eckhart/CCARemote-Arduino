@@ -1,3 +1,12 @@
+/*
+ * CCARemoteBLE.cpp – Bluetooth Low Energy (BLE) Implementation
+ *
+ * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
+ * Extended by A. Eckhart with kind permission of the original authors.
+ *
+ * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ */
+
 #include "CCARemoteBLE.h"
 
 const char* CCARemoteBLE::SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";

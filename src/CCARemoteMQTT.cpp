@@ -1,3 +1,12 @@
+/*
+ * CCARemoteMQTT.cpp – MQTT Implementation
+ *
+ * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
+ * Extended by A. Eckhart with kind permission of the original authors.
+ *
+ * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ */
+
 #include "CCARemoteMQTT.h"
 
 #if defined(__has_include) && __has_include(<PubSubClient.h>)
