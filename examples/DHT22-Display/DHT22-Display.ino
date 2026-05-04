@@ -36,7 +36,8 @@ void setup() {
 void loop() {
   remote.handle();  // Empfangene Befehle verarbeiten und Variablen aktualisieren (erforderlich)
 
-  if (millis() - lastUpdate >= UPDATE_INTERVAL) {
+  // Sensorwerte senden (nur wenn App verbunden)
+  if (remote.isConnected() && millis() - lastUpdate >= UPDATE_INTERVAL) {
     lastUpdate = millis();
     
     float temperature = dht.readTemperature();
@@ -47,5 +48,4 @@ void loop() {
       remote.send("humid1", humidity);    // z.B. "58.0"
     }
   }
-  
 }

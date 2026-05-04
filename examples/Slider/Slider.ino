@@ -34,6 +34,9 @@ void setup() {
 void loop() {
   remote.handle();  // Empfangene Befehle verarbeiten und Variablen aktualisieren (erforderlich)
 
-  analogWrite(LED_PIN, helligkeit);
-  
+  if (remote.isConnected()) {
+    analogWrite(LED_PIN, helligkeit);
+  } else {
+    analogWrite(LED_PIN, 0);  // LED ausschalten wenn keine Verbindung
+  }
 }

@@ -51,21 +51,28 @@ void setup() {
 void loop() {
   remote.handle();  // Empfangene Befehle verarbeiten und Variablen aktualisieren (erforderlich)
 
-  // LED mit Button-Element schalten
-  digitalWrite(LED_BUTTON, button1_val);
+  if (remote.isConnected()) {
+    // LED mit Button-Element schalten
+    digitalWrite(LED_BUTTON, button1_val);
 
-  // LED mit Slider-Element dimmen
-  analogWrite(LED_SLIDER, slider1_val);
+    // LED mit Slider-Element dimmen
+    analogWrite(LED_SLIDER, slider1_val);
 
-  // LED mit Switch-Element schalten
-  digitalWrite(LED_SWITCH, switch1_val);
+    // LED mit Switch-Element schalten
+    digitalWrite(LED_SWITCH, switch1_val);
 
-  // LED mit Input-Element schalten: "ON" = an, alles andere = aus
-  if (command.length() > 0) {
-    digitalWrite(LED_INPUT, command == "ON" ? HIGH : LOW);
+    // LED mit Input-Element schalten: "ON" = an, alles andere = aus
+    if (command.length() > 0) {
+      digitalWrite(LED_INPUT, command == "ON" ? HIGH : LOW);
+    }
+
+    // Joystick-Werte und Slider-Wert an Display-Elemente der App senden
+    remote.send("display1", slider1_val);
+  } else {
+    // Alle Ausgaben auf sicheren Zustand setzen wenn keine Verbindung
+    digitalWrite(LED_BUTTON, LOW);
+    analogWrite(LED_SLIDER, 0);
+    digitalWrite(LED_SWITCH, LOW);
+    digitalWrite(LED_INPUT,  LOW);
   }
-
-  // Joystick-Werte und Slider-Wert an Display-Elemente der App senden
-  remote.send("display1", slider1_val);
-  
 }

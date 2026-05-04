@@ -27,12 +27,11 @@ void setup() {
 void loop() {
   remote.handle();  // Empfangene Befehle verarbeiten und Variablen aktualisieren (erforderlich)
 
-  // Wert jede Sekunde senden
-  if (millis() - lastUpdate >= UPDATE_INTERVAL) {
+  // Wert jede Sekunde senden (nur wenn App verbunden)
+  if (remote.isConnected() && millis() - lastUpdate >= UPDATE_INTERVAL) {
     lastUpdate = millis();
     
     counter++;
     remote.send("display1", counter);
   }
-  
 }
