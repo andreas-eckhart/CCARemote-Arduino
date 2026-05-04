@@ -21,7 +21,7 @@ bool button_status = false;  // true = aktiv; false = inaktiv
 
 
 void setup() {
-  remote.debug(true, 9600);  // Debug Modus aktivieren – vor begin() aufrufen!
+  remote.debug(CCA_DEBUG_ALL, 9600);  // Debug Modus: CCA_DEBUG_IN, CCA_DEBUG_OUT oder CCA_DEBUG_ALL
   remote.begin();            // Initialisierung (erforderlich)
 
   // Die Element-IDs aus der App werden nun mit den vorhin definierten Variablen verknüpft

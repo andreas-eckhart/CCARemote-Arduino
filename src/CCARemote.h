@@ -15,6 +15,14 @@
 #include <map>
 #include <vector>
 
+// Debug-Modus Flags (kombinierbar mit |)
+enum CCADebugMode {
+  CCA_DEBUG_OFF = 0,  // kein Debug-Output
+  CCA_DEBUG_IN  = 1,  // empfangene Werte ausgeben
+  CCA_DEBUG_OUT = 2,  // gesendete Werte ausgeben
+  CCA_DEBUG_ALL = 3   // empfangene und gesendete Werte ausgeben
+};
+
 // Abstrakte Basisklasse - nicht direkt verwenden!
 // Verwende: CCARemoteBLE, CCARemoteWiFi
 class CCARemote {
@@ -34,8 +42,8 @@ class CCARemote {
     void receive(String cmd, float&  var);   // fuer Dezimalwerte
     void receive(String cmd, String& var);   // fuer Texteingabe
 
-    // Debug-Modus: empfangene und gesendete Werte im Seriellen Monitor ausgeben
-    void debug(bool enable = true, unsigned long baudRate = 9600);
+    // Debug-Modus: empfangene und/oder gesendete Werte im Seriellen Monitor ausgeben
+    void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
 
     void send(String message);
     void send(String key, String value);
@@ -50,7 +58,7 @@ class CCARemote {
     std::map<String, String> displayValues;
     String lastCommand;
     bool   commandReceived;
-    bool   debugEnabled;
+    CCADebugMode debugMode;
 
     void processCommand(String cmd);
     virtual void sendInternal(String key, String value) = 0;

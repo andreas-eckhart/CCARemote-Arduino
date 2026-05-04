@@ -178,17 +178,26 @@ remote.send("spannung", 3.7, 2);  // "3.70"
 
 ### `debug()` – Seriellen Monitor aktivieren
 
-Aktiviert die Ausgabe empfangener und gesendeter Werte im Seriellen Monitor. Ruft automatisch `Serial.begin()` mit der angegebenen Baudrate auf.
+Aktiviert die Ausgabe empfangener und/oder gesendeter Werte im Seriellen Monitor. Ruft automatisch `Serial.begin()` mit der angegebenen Baudrate auf.
 
 ```cpp
-remote.debug();              // Serial mit 9600 Baud (Standard)
-remote.debug(true, 115200);  // Serial mit 115200 Baud
-remote.debug(false);         // Debug-Modus deaktivieren
+remote.debug();                        // IN + OUT, 9600 Baud (Standard)
+remote.debug(CCA_DEBUG_ALL, 115200);   // IN + OUT, 115200 Baud
+remote.debug(CCA_DEBUG_IN);           // nur empfangene Werte (IN)
+remote.debug(CCA_DEBUG_OUT);          // nur gesendete Werte (OUT)
+remote.debug(CCA_DEBUG_OFF);          // Debug-Modus deaktivieren
 ```
+
+| Modus | Wert | Beschreibung |
+|---|---|---|
+| `CCA_DEBUG_OFF` | `0` | Kein Debug-Output |
+| `CCA_DEBUG_IN`  | `1` | Empfangene Werte ausgeben (`[CCA] IN  key = wert`) |
+| `CCA_DEBUG_OUT` | `2` | Gesendete Werte ausgeben (`[CCA] OUT key = wert`) |
+| `CCA_DEBUG_ALL` | `3` | Empfangene und gesendete Werte ausgeben |
 
 | Parameter | Typ | Standard | Beschreibung |
 |---|---|---|---|
-| `enable` | `bool` | `true` | Debug-Modus ein- oder ausschalten |
+| `mode` | `CCADebugMode` | `CCA_DEBUG_ALL` | Welche Richtung(en) ausgegeben werden |
 | `baudRate` | `unsigned long` | `9600` | Baudrate für `Serial.begin()` |
 
 > **Hinweis:** `debug()` muss **vor** `remote.begin()` aufgerufen werden, damit die Baudrate korrekt gesetzt wird. `Serial.begin()` muss dann **nicht** zusätzlich in `setup()` aufgerufen werden.

@@ -13,7 +13,7 @@ CCARemote::CCARemote(String name, String prefix) {
   deviceName      = prefix + name;
   commandReceived = false;
   lastCommand     = "";
-  debugEnabled    = false;
+  debugMode       = CCA_DEBUG_OFF;
 }
 
 void CCARemote::onCommand(String cmd, std::function<void()> callback) {
@@ -26,18 +26,21 @@ void CCARemote::onCommand(String cmd, std::function<void(String)> callback) {
   Serial.println("Befehl registriert: " + cmd + " (mit Wert)");
 }
 
-void CCARemote::debug(bool enable, unsigned long baudRate) {
-  debugEnabled = enable;
-  if (enable) {
+void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
+  debugMode = mode;
+  if (mode != CCA_DEBUG_OFF) {
     Serial.begin(baudRate);
   }
-  Serial.println(enable ? "[CCA] Debug-Modus aktiviert" : "[CCA] Debug-Modus deaktiviert");
+  if (mode == CCA_DEBUG_OFF)  Serial.println("[CCA] Debug-Modus deaktiviert");
+  if (mode == CCA_DEBUG_IN)   Serial.println("[CCA] Debug-Modus: nur IN");
+  if (mode == CCA_DEBUG_OUT)  Serial.println("[CCA] Debug-Modus: nur OUT");
+  if (mode == CCA_DEBUG_ALL)  Serial.println("[CCA] Debug-Modus: IN + OUT");
 }
 
 void CCARemote::receive(String cmd, int& var) {
   commandsWithValue[cmd] = [this, cmd, &var](String value) {
     var = value.toInt();
-    if (debugEnabled) Serial.println("[CCA] IN  " + cmd + " = " + value);
+    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
   };
   Serial.println("Variable gebunden: " + cmd + " (int)");
 }
@@ -45,7 +48,7 @@ void CCARemote::receive(String cmd, int& var) {
 void CCARemote::receive(String cmd, bool& var) {
   commandsWithValue[cmd] = [this, cmd, &var](String value) {
     var = (value == "1" || value == "true" || value == "on");
-    if (debugEnabled) Serial.println("[CCA] IN  " + cmd + " = " + value);
+    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
   };
   Serial.println("Variable gebunden: " + cmd + " (bool)");
 }
@@ -53,7 +56,7 @@ void CCARemote::receive(String cmd, bool& var) {
 void CCARemote::receive(String cmd, float& var) {
   commandsWithValue[cmd] = [this, cmd, &var](String value) {
     var = value.toFloat();
-    if (debugEnabled) Serial.println("[CCA] IN  " + cmd + " = " + value);
+    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
   };
   Serial.println("Variable gebunden: " + cmd + " (float)");
 }
@@ -61,7 +64,7 @@ void CCARemote::receive(String cmd, float& var) {
 void CCARemote::receive(String cmd, String& var) {
   commandsWithValue[cmd] = [this, cmd, &var](String value) {
     var = value;
-    if (debugEnabled) Serial.println("[CCA] IN  " + cmd + " = " + value);
+    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
   };
   Serial.println("Variable gebunden: " + cmd + " (String)");
 }
@@ -86,7 +89,7 @@ void CCARemote::processCommand(String cmd) {
         }
       } else {
         if (commands.count(part) > 0) {
-          if (debugEnabled) Serial.println("[CCA] IN  " + part + " (kein Wert)");
+          if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + part + " (kein Wert)");
           commands[part]();
         } else {
           Serial.println("Unbekannter Befehl: " + part);
@@ -102,25 +105,32 @@ void CCARemote::processCommand(String cmd) {
 void CCARemote::send(String message) {
   int colonPos = message.indexOf(':');
   if (colonPos > 0) {
-    sendInternal(message.substring(0, colonPos), message.substring(colonPos + 1));
+    String key   = message.substring(0, colonPos);
+    String value = message.substring(colonPos + 1);
+    if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + value);
+    sendInternal(key, value);
   } else {
+    if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + message);
     sendInternal(message, "");
   }
 }
 
 void CCARemote::send(String key, String value) {
-  if (debugEnabled) Serial.println("[CCA] OUT " + key + " = " + value);
+  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + value);
   sendInternal(key, value);
 }
 
 void CCARemote::send(String key, int value) {
+  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + String(value));
   sendInternal(key, String(value));
 }
 
 void CCARemote::send(String key, float value) {
+  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + String(value, 1));
   sendInternal(key, String(value, 1));
 }
 
 void CCARemote::send(String key, float value, int decimals) {
+  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + String(value, decimals));
   sendInternal(key, String(value, decimals));
 }
