@@ -23,6 +23,7 @@ public:
   }
   void onDisconnect(BLEServer*) override {
     parent->deviceConnected = false;
+    parent->authenticated   = false;
     Serial.println("Geraet getrennt!");
     BLEDevice::startAdvertising();
   }
@@ -34,10 +35,22 @@ public:
   ControlCallbacks(CCARemoteBLE* p) : parent(p) {}
   void onWrite(BLECharacteristic* pChar) override {
     String value = pChar->getValue().c_str();
-    if (value.length() > 0) {
-      parent->lastCommand     = value;
-      parent->commandReceived = true;
+    if (value.length() == 0) return;
+
+    // Authentifizierung prüfen, falls Passwort gesetzt
+    if (!parent->blePassword.isEmpty() && !parent->authenticated) {
+      if (value == "AUTH:" + parent->blePassword) {
+        parent->authenticated = true;
+        Serial.println("BLE Authentifizierung erfolgreich!");
+      } else {
+        Serial.println("BLE Authentifizierung fehlgeschlagen! Verbindung wird getrennt.");
+        parent->pServer->disconnect(parent->pServer->getConnId());
+      }
+      return;
     }
+
+    parent->lastCommand     = value;
+    parent->commandReceived = true;
   }
 };
 
@@ -46,9 +59,11 @@ CCARemoteBLE::CCARemoteBLE(String name, String prefix) : CCARemote(name, prefix)
   pControlChar    = nullptr;
   pDisplayChar    = nullptr;
   deviceConnected = false;
+  authenticated   = false;
 }
 
-void CCARemoteBLE::begin() {
+void CCARemoteBLE::begin(String blePassword) {
+  this->blePassword = blePassword;
   if (debugMode == CCA_DEBUG_OFF) Serial.begin(115200);
   Serial.println("\nCCA Remote startet (BLE)...");
   Serial.println("Geraetename: " + deviceName);
@@ -86,6 +101,9 @@ void CCARemoteBLE::begin() {
   BLEDevice::startAdvertising();
 
   Serial.println("BLE Server laeuft!");
+  if (!blePassword.isEmpty()) {
+    Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
+  }
   Serial.println("Warte auf Verbindung...\n");
 }
 

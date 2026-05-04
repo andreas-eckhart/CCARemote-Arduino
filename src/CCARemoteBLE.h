@@ -19,7 +19,8 @@
 class CCARemoteBLE : public CCARemote {
   public:
     CCARemoteBLE(String name, String prefix = "CCA-");
-    void begin();
+    // blePassword = "" -> keine Authentifizierung erforderlich
+    void begin(String blePassword = "");
     void handle() override;
     bool isConnected() override;
 
@@ -35,6 +36,8 @@ class CCARemoteBLE : public CCARemote {
     BLECharacteristic* pControlChar;   // empfängt Befehle
     BLECharacteristic* pDisplayChar;   // sendet Display-Werte
     bool               deviceConnected;
+    String             blePassword;
+    bool               authenticated;
 
     class ServerCallbacks;
     class ControlCallbacks;
