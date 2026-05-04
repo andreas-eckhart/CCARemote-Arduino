@@ -69,12 +69,7 @@ bool CCARemoteWiFi::isConnected() {
 }
 
 void CCARemoteWiFi::sendInternal(String key, String value) {
-  bool changed = (displayValues.find(key) == displayValues.end()) ||
-                 (displayValues[key] != value);
   displayValues[key] = value;
-  if (changed) {
-    Serial.println("Display: " + key + " = " + value);
-  }
 }
 
 void CCARemoteWiFi::handleRoot() {

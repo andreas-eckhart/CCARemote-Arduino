@@ -40,7 +40,7 @@ bool ledAn     = false;  // Button / Switch
 int  helligkeit = 0;     // Slider (0–255)
 
 void setup() {
-  remote.begin();  // BLE starten
+  remote.begin("12345678");  // BLE AUTH Passwort (leer lassen = ohne AUTH Passwort)
 
   // Variable mit App-Befehl verknüpfen (empfohlen)
   remote.receive("ledAn",     ledAn);
@@ -56,7 +56,7 @@ void loop() {
 }
 ```
 
-**`begin()`** – BLE-Server starten. Der Gerätename in der App lautet `remote-MeinName`.
+**`begin(BLEPassword)`** – BLE AUTH-Passwort kann in der App unter Einstellungen gesetzt werden.
 
 ---
 
@@ -96,7 +96,7 @@ Die App verbindet sich damit und sendet Befehle über HTTP.
 
 | Klasse | Aufruf |
 |---|---|
-| `CCARemoteBLE` | `remote.begin()` |
+| `CCARemoteBLE` | `remote.begin()` oder `remote.begin("passwort")` |
 | `CCARemoteWiFi` | `remote.begin()` oder `remote.begin("passwort")` |
 
 ---
