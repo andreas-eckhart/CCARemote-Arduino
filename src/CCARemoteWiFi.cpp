@@ -22,7 +22,7 @@ CCARemoteWiFi::~CCARemoteWiFi() {
 }
 
 void CCARemoteWiFi::begin(String wifiPassword) {
-  if (!debugEnabled) Serial.begin(115200);
+  if (debugMode == CCA_DEBUG_OFF) Serial.begin(115200);
   Serial.println("\nCCA Remote startet (WiFi)...");
   Serial.println("Geraetename: " + deviceName);
 
