@@ -19,6 +19,7 @@ public:
   ServerCallbacks(CCARemoteBLE* p) : parent(p) {}
   void onConnect(BLEServer*) override {
     parent->deviceConnected = true;
+    parent->authenticated   = parent->blePassword.isEmpty();
     Serial.println("Geraet verbunden!");
   }
   void onDisconnect(BLEServer*) override {
@@ -124,7 +125,7 @@ bool CCARemoteBLE::isConnected() {
 }
 
 void CCARemoteBLE::sendInternal(String key, String value) {
-  if (deviceConnected && pDisplayChar != nullptr) {
+  if (deviceConnected && authenticated && pDisplayChar != nullptr) {
     String msg = key + ":" + value;
     pDisplayChar->setValue(msg.c_str());
     pDisplayChar->notify();
