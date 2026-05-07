@@ -30,6 +30,7 @@ public:
   void onConnect(BLEServer*) override {
     parent->deviceConnected = true;
     parent->authenticated   = parent->blePassword.length() == 0;
+    parent->_pendingResync  = true;
     Serial.println("Geraet verbunden!");
   }
   void onDisconnect(BLEServer*) override {
@@ -50,7 +51,8 @@ public:
 
     if (!parent->blePassword.length() == 0 && !parent->authenticated) {
       if (value == "AUTH:" + parent->blePassword) {
-        parent->authenticated = true;
+        parent->authenticated  = true;
+        parent->_pendingResync = true;
         Serial.println("BLE Authentifizierung erfolgreich!");
         parent->pDisplayChar->setValue("AUTH:OK");
         parent->pDisplayChar->notify();
@@ -121,6 +123,10 @@ void CCARemoteBLE::begin(String blePassword) {
 }
 
 void CCARemoteBLE::handle() {
+  if (_pendingResync && deviceConnected && authenticated) {
+    _pendingResync = false;
+    _resyncDisplay();
+  }
   if (commandReceived) {
     processCommand(lastCommand);
     commandReceived = false;
@@ -196,6 +202,11 @@ void CCARemoteBLE::begin(String blePassword) {
 }
 
 void CCARemoteBLE::handle() {
+  if (_pendingResync && _connected && _authenticated) {
+    _pendingResync = false;
+    _resyncDisplay();
+  }
+
   // Alle verfuegbaren Bytes einlesen
   while (_serial->available()) {
     _rxBuffer += (char)_serial->read();
@@ -228,6 +239,7 @@ void CCARemoteBLE::_processRx(String data) {
   if (data.indexOf("OK+CONN") >= 0 || data.indexOf("+CONNECTED") >= 0) {
     _connected     = true;
     _authenticated = _blePassword.length() == 0;
+    _pendingResync = true;
     Serial.println("Geraet verbunden!");
     return;
   }
@@ -247,6 +259,7 @@ void CCARemoteBLE::_processRx(String data) {
   if (!_blePassword.length() == 0 && !_authenticated) {
     if (data == "AUTH:" + _blePassword) {
       _authenticated = true;
+      _pendingResync = true;
       Serial.println("BLE Authentifizierung erfolgreich!");
       _sendRaw("AUTH:OK");
     } else {

@@ -24,6 +24,7 @@ CCARemote::CCARemote(String name, String prefix) {
   _cmdVCount      = 0;
   _recvCount      = 0;
   _displayCount   = 0;
+  _pendingResync  = false;
 }
 
 void CCARemote::onCommand(String cmd, void (*callback)()) {
@@ -145,6 +146,7 @@ CCARemote::CCARemote(String name, String prefix) {
   commandReceived = false;
   lastCommand     = "";
   debugMode       = CCA_DEBUG_OFF;
+  _pendingResync  = false;
 }
 
 void CCARemote::onCommand(String cmd, std::function<void()> callback) {
@@ -226,6 +228,18 @@ void CCARemote::processCommand(String cmd) {
 // ================================================================
 //  Gemeinsame Methoden (beide Plattformen)
 // ================================================================
+
+void CCARemote::_resyncDisplay() {
+#if defined(__AVR__)
+  for (uint8_t i = 0; i < _displayCount; i++) {
+    sendInternal(_display[i].key, _display[i].value);
+  }
+#else
+  for (auto const& pair : displayValues) {
+    sendInternal(pair.first, pair.second);
+  }
+#endif
+}
 
 void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
   debugMode = mode;

@@ -100,6 +100,8 @@ class CCARemote {
     CCADebugMode debugMode;
 
     void processCommand(String cmd);
+    void _resyncDisplay();
+    bool _pendingResync;
     virtual void sendInternal(String key, String value) = 0;
 
     // Display-Werte: auf AVR fixes Array, sonst std::map
