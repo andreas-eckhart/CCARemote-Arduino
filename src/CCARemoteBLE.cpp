@@ -42,6 +42,8 @@ public:
       if (value == "AUTH:" + parent->blePassword) {
         parent->authenticated = true;
         Serial.println("BLE Authentifizierung erfolgreich!");
+        parent->pDisplayChar->setValue("AUTH:OK");
+        parent->pDisplayChar->notify();
       } else {
         Serial.println("BLE Authentifizierung fehlgeschlagen! Verbindung wird getrennt.");
         parent->pDisplayChar->setValue("AUTH:FAIL");
