@@ -48,7 +48,7 @@ void CCARemoteWiFi::begin(String wifiPassword) {
     Serial.println(wifiPassword);
   }
 
-  webServer = new WebServer(80);
+  webServer = new CCAWebServer(80);
   webServer->on("/",        HTTP_GET,  [this]() { this->handleRoot();    });
   webServer->on("/status",  HTTP_GET,  [this]() { this->handleStatus();  });
   webServer->on("/command", HTTP_POST, [this]() { this->handleCommand(); });

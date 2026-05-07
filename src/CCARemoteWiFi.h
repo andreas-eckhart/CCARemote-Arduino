@@ -1,18 +1,30 @@
 /*
  * CCARemoteWiFi.h – WiFi Access Point Class
  *
+ * Plattform-Erkennung (automatisch):
+ *   ESP32   → WiFi.h + WebServer.h
+ *   ESP8266 → ESP8266WiFi.h + ESP8266WebServer.h
+ *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ * Version: 1.1.0 | 2026-05-07 | MIT – see LICENSE
  */
 
 #ifndef CCAREMOTE_WIFI_H
 #define CCAREMOTE_WIFI_H
 
 #include "CCARemote.h"
-#include <WiFi.h>
-#include <WebServer.h>
+
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <ESP8266WebServer.h>
+  using CCAWebServer = ESP8266WebServer;
+#else
+  #include <WiFi.h>
+  #include <WebServer.h>
+  using CCAWebServer = WebServer;
+#endif
 
 class CCARemoteWiFi : public CCARemote {
   public:
@@ -28,8 +40,8 @@ class CCARemoteWiFi : public CCARemote {
     void sendInternal(String key, String value) override;
 
   private:
-    WebServer* webServer;
-    bool       wifiEnabled;
+    CCAWebServer* webServer;
+    bool          wifiEnabled;
 
     void handleRoot();
     void handleStatus();
