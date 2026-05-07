@@ -8,6 +8,10 @@ Unterstützte Protokolle:
 - **WiFi (WLAN-Hotspot + HTTP)**
 - **MQTT** (in Arbeit)
 
+Unterstützte Hardware:
+- **ESP32** – natives BLE, WiFi, MQTT
+- **Arduino Uno / Nano** – BLE über HM-10-Modul (SoftwareSerial)
+
 ---
 
 ## Installation
@@ -19,44 +23,102 @@ Unterstützte Protokolle:
 
 ## Klassen im Überblick
 
-| Klasse | Protokoll | `#include` |
-|---|---|---|
-| `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` |
-| `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` |
+| Klasse | Protokoll | `#include` | Hardware |
+|---|---|---|---|
+| `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` | ESP32 oder Arduino + HM-10 |
+| `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` | ESP32 |
 
-> Beide Klassen haben dieselbe API – wer BLE kennt, kann sofort auf WiFi wechseln.
+> `CCARemoteBLE` erkennt die Zielplattform **automatisch beim Kompilieren** und wählt die passende Implementierung – der Sketch-Code bleibt auf beiden Plattformen identisch.
 
 ---
 
 ## CCARemoteBLE – Bluetooth
 
+### ESP32 (natives BLE)
+
 ```cpp
 #include <CCARemoteBLE.h>
 
-CCARemoteBLE remote("MeinName");  // Gerätename: "remote-MeinName"
+CCARemoteBLE remote("MeinName");
 
-// --- Variablen oben deklarieren ---
-bool ledAn     = false;  // Button / Switch
-int  helligkeit = 0;     // Slider (0–255)
+bool ledAn      = false;
+int  helligkeit = 0;
 
 void setup() {
-  remote.begin("12345678");  // BLE AUTH Passwort (leer lassen = ohne AUTH Passwort)
+  remote.begin("12345678");  // BLE AUTH-Passwort (leer = ohne Passwort)
 
-  // Variable mit App-Befehl verknüpfen (empfohlen)
-  remote.receive("ledAn",     ledAn);
+  remote.receive("ledAn",      ledAn);
   remote.receive("helligkeit", helligkeit);
 }
 
 void loop() {
-  remote.handle();  // Immer in loop() aufrufen – aktualisiert Variablen!
+  remote.handle();
 
-  // Variablen direkt verwenden
   digitalWrite(LED_PIN, ledAn);
-  analogWrite(PWM_PIN, helligkeit);
+  analogWrite(PWM_PIN,  helligkeit);
 }
 ```
 
-**`begin(BLEPassword)`** – BLE AUTH-Passwort kann in der App unter Einstellungen gesetzt werden.
+### Arduino Uno / Nano mit HM-10-Modul
+
+```cpp
+#include <CCARemoteBLE.h>
+
+// Standard: RX=10, TX=11, 9600 Baud
+CCARemoteBLE remote("MeinName");
+
+// Eigene Pins / Baudrate:
+// CCARemoteBLE remote("MeinName", "CCA-", 8, 9, 9600);
+
+bool ledAn      = false;
+int  helligkeit = 0;
+
+void setup() {
+  remote.begin("12345678");  // BLE AUTH-Passwort (leer = ohne Passwort)
+
+  remote.receive("ledAn",      ledAn);
+  remote.receive("helligkeit", helligkeit);
+}
+
+void loop() {
+  remote.handle();
+
+  digitalWrite(LED_PIN, ledAn);
+  analogWrite(PWM_PIN,  helligkeit);
+}
+```
+
+#### Konstruktor-Parameter (nur Arduino / HM-10)
+
+```cpp
+CCARemoteBLE remote(name, prefix, rxPin, txPin, baudRate);
+```
+
+| Parameter | Typ | Standard | Beschreibung |
+|---|---|---|---|
+| `name` | `String` | – | Gerätename (wird mit Prefix kombiniert) |
+| `prefix` | `String` | `"CCA-"` | Prefix für den Gerätenamen |
+| `rxPin` | `uint8_t` | `10` | Arduino-Pin → HM-10 TX |
+| `txPin` | `uint8_t` | `11` | Arduino-Pin → HM-10 RX |
+| `baudRate` | `uint32_t` | `9600` | Baudrate des HM-10-Moduls |
+
+#### HM-10 Verdrahtung
+
+| HM-10 | Arduino Uno / Nano |
+|---|---|
+| VCC | 3,3 V oder 5 V (je nach Modul) |
+| GND | GND |
+| TXD | Pin 10 (RX) |
+| RXD | Pin 11 (TX) – bei 5-V-Arduinos Spannungsteiler empfohlen¹ |
+
+> ¹ Der HM-10 arbeitet mit 3,3-V-Logik. Ein Spannungsteiler (z. B. 10 kΩ / 20 kΩ) schützt den Eingang des Moduls vor den 5-V-Pegeln des Arduino.
+
+#### Hinweise zum HM-10
+
+- Die Bibliothek konfiguriert das Modul beim Start automatisch (Name, Slave-Modus, Reset).
+- Bei Auth-Fehler kann das HM-10 die Verbindung nicht aktiv trennen; die App übernimmt das und zeigt die Fehlermeldung an.
+- Gerätenamen werden auf 12 Zeichen begrenzt (HM-10-Firmware-Limit).
+- Getestete Firmware: v5xx. Bei abweichenden Verbindungs-Events (z. B. `AT+CONNECTED` statt `OK+CONN`) ggf. Firmware updaten.
 
 ---
 
@@ -67,11 +129,10 @@ void loop() {
 
 CCARemoteWiFi remote("MeinName");
 
-// --- Variablen oben deklarieren ---
 bool ledChange = false;
 
 void setup() {
-  remote.begin("12345678");  // WLAN-Passwort (leer lassen = offenes Netz)
+  remote.begin("12345678");  // WLAN-Passwort (leer = offenes Netz)
 
   remote.receive("ledChange", ledChange);
 }
@@ -83,10 +144,10 @@ void loop() {
 }
 ```
 
-Der ESP32 erstellt einen WLAN-Hotspot mit dem Namen `remote-MeinName`.  
+Der ESP32 erstellt einen WLAN-Hotspot mit dem Namen `CCA-MeinName`.  
 Die App verbindet sich damit und sendet Befehle über HTTP.
 
-**`begin(wifiPassword)`** – WiFi-Hotspot starten. Passwort weglassen oder leer lassen für ein offenes Netzwerk.
+**`begin(wifiPassword)`** – Passwort weglassen oder leer lassen für ein offenes Netzwerk.
 
 ---
 
@@ -106,7 +167,6 @@ Die App verbindet sich damit und sendet Befehle über HTTP.
 Einfachste Methode: Variable oben deklarieren, einmal binden – `remote.handle()` aktualisiert sie automatisch.
 
 ```cpp
-// Variablen deklarieren
 bool  ledAn      = false;
 int   helligkeit = 0;
 float temperatur = 0.0;
@@ -114,16 +174,14 @@ float temperatur = 0.0;
 void setup() {
   remote.begin();
 
-  // Typen werden automatisch erkannt
   remote.receive("ledAn",      ledAn);       // bool  – für Button, Switch
   remote.receive("helligkeit", helligkeit);  // int   – für Slider, Zahlenwerte
   remote.receive("sollTemp",   temperatur);  // float – für Dezimalwerte
 }
 
 void loop() {
-  remote.handle();  // aktualisiert ledAn, helligkeit, temperatur
+  remote.handle();
 
-  // Variablen ganz normal verwenden
   digitalWrite(LED_PIN, ledAn);
   analogWrite(PWM_PIN, helligkeit);
 }
@@ -138,8 +196,6 @@ void loop() {
 ---
 
 ### `onCommand()` – Callback bei Empfang *(für komplexe Logik)*
-
-Wenn beim Empfang eines Wertes sofort etwas ausgeführt werden soll:
 
 ```cpp
 // Befehl ohne Wert (z. B. Button-Druck)
@@ -158,7 +214,6 @@ remote.onCommand("helligkeit", [](String wert) {
 ### `send()` – Werte in der App anzeigen
 
 ```cpp
-// Schlüssel + Wert (empfohlen)
 remote.send("temperatur", 23.5);
 remote.send("status", "aktiv");
 remote.send("zaehler", 42);
@@ -200,25 +255,21 @@ remote.debug(CCA_DEBUG_OFF);          // Debug-Modus deaktivieren
 | `mode` | `CCADebugMode` | `CCA_DEBUG_ALL` | Welche Richtung(en) ausgegeben werden |
 | `baudRate` | `unsigned long` | `9600` | Baudrate für `Serial.begin()` |
 
-> **Hinweis:** `debug()` muss **vor** `remote.begin()` aufgerufen werden, damit die Baudrate korrekt gesetzt wird. `Serial.begin()` muss dann **nicht** zusätzlich in `setup()` aufgerufen werden.
+> **Hinweis:** `debug()` muss **vor** `remote.begin()` aufgerufen werden.
 
 ---
 
 ### Gerätename und Prefix anpassen
 
-Standardmäßig wird dem Gerätenamen automatisch der Prefix `CCA-` vorangestellt. Der Prefix kann frei angepasst oder ganz weggelassen werden:
-
 ```cpp
-CCARemoteWiFi remote("Roboter");             // → "CCA-Roboter"  (Standard)
-CCARemoteWiFi remote("Roboter", "HTL-");     // → "HTL-Roboter"
-CCARemoteWiFi remote("Roboter", "");         // → "Roboter"  (kein Prefix)
+CCARemoteBLE remote("Roboter");           // → "CCA-Roboter"  (Standard)
+CCARemoteBLE remote("Roboter", "HTL-");   // → "HTL-Roboter"
+CCARemoteBLE remote("Roboter", "");       // → "Roboter"  (kein Prefix)
 ```
-
-Der zweite Parameter gilt für alle Klassen (`CCARemoteBLE`, `CCARemoteWiFi`).
 
 ---
 
-## `handle()` – Verarbeitung (zwingend in `loop()`)
+### `handle()` – Verarbeitung (zwingend in `loop()`)
 
 ```cpp
 void loop() {
@@ -244,16 +295,15 @@ if (remote.isConnected()) {
 #include <CCARemoteBLE.h>
 
 CCARemoteBLE remote("MeinName");  // Namen hier anpassen!
+// Arduino + HM-10 mit eigenen Pins: CCARemoteBLE remote("MeinName", "CCA-", 8, 9);
 
 const int LED_BUTTON = 18;
 const int LED_SLIDER = 19;
 const int LED_SWITCH = 5;
 
-// --- Variablen (werden von remote.handle() automatisch aktualisiert) ---
-// Die Namen müssen mit den Variablennamen in der App übereinstimmen!
-bool changeLed  = false;  // Button
-int  brightness = 0;      // Slider (0–255)
-bool ledSwitch  = false;  // Switch
+bool changeLed  = false;
+int  brightness = 0;
+bool ledSwitch  = false;
 
 void setup() {
   pinMode(LED_BUTTON, OUTPUT);
@@ -266,14 +316,12 @@ void setup() {
 }
 
 void loop() {
-  remote.handle();  // Variablen aktualisieren
+  remote.handle();
 
-  // Variablen direkt verwenden
   digitalWrite(LED_BUTTON, changeLed);
   analogWrite(LED_SLIDER,  brightness);
   digitalWrite(LED_SWITCH, ledSwitch ? HIGH : LOW);
 
-  // Alle 2 Sekunden Status senden
   static unsigned long letzterSend = 0;
   if (millis() - letzterSend >= 2000) {
     letzterSend = millis();
@@ -286,9 +334,18 @@ void loop() {
 
 ## Voraussetzungen
 
+### ESP32
+
 - **Board:** ESP32 (beliebiges Modell)
 - **Arduino IDE:** 2.x empfohlen
 - **ESP32-Paket:** Boardverwalter → `esp32` von Espressif
+
+### Arduino Uno / Nano + HM-10
+
+- **Board:** Arduino Uno oder Nano (ATmega328P)
+- **Arduino IDE:** 2.x empfohlen
+- **Bibliothek:** `SoftwareSerial` (im Arduino IDE vorinstalliert)
+- **Modul:** HM-10 BLE-Modul (CC2540 / CC2541 Chip, Firmware v5xx)
 
 ---
 

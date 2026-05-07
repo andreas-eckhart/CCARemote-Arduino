@@ -1,13 +1,23 @@
 /*
  * CCARemoteBLE.cpp – Bluetooth Low Energy (BLE) Implementation
  *
+ * Plattform-Erkennung (automatisch):
+ *   ESP32        → natives BLE (BLEDevice-Bibliothek)
+ *   Arduino Uno/Nano → HM-10-Modul über SoftwareSerial
+ *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ * Version: 1.1.0 | 2026-05-07 | MIT – see LICENSE
  */
 
 #include "CCARemoteBLE.h"
+
+// ================================================================
+#if defined(ESP32)
+// ================================================================
+//  ESP32 – Natives BLE
+// ================================================================
 
 const char* CCARemoteBLE::SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const char* CCARemoteBLE::CONTROL_UUID = "cba1d466-344c-4be3-ab3f-189f80dd7518"; // App → Arduino
@@ -38,7 +48,6 @@ public:
     String value = pChar->getValue().c_str();
     if (value.length() == 0) return;
 
-    // Authentifizierung prüfen, falls Passwort gesetzt
     if (!parent->blePassword.isEmpty() && !parent->authenticated) {
       if (value == "AUTH:" + parent->blePassword) {
         parent->authenticated = true;
@@ -81,7 +90,6 @@ void CCARemoteBLE::begin(String blePassword) {
 
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
-  // Befehlscharakteristik: App → Arduino (nur WRITE)
   pControlChar = pService->createCharacteristic(
     CONTROL_UUID,
     BLECharacteristic::PROPERTY_WRITE |
@@ -89,7 +97,6 @@ void CCARemoteBLE::begin(String blePassword) {
   );
   pControlChar->setCallbacks(new ControlCallbacks(this));
 
-  // Display-Charakteristik: Arduino → App (nur NOTIFY)
   pDisplayChar = pService->createCharacteristic(
     DISPLAY_UUID,
     BLECharacteristic::PROPERTY_READ  |
@@ -131,3 +138,134 @@ void CCARemoteBLE::sendInternal(String key, String value) {
     pDisplayChar->notify();
   }
 }
+
+// ================================================================
+#else
+// ================================================================
+//  Arduino Uno / Nano – HM-10 BLE-Modul über SoftwareSerial
+// ================================================================
+
+CCARemoteBLE::CCARemoteBLE(String name, String prefix,
+                           uint8_t rxPin, uint8_t txPin,
+                           uint32_t baudRate)
+  : CCARemote(name, prefix),
+    _serial(nullptr),
+    _rxPin(rxPin), _txPin(txPin), _baudRate(baudRate),
+    _connected(false), _authenticated(false),
+    _lastByteTime(0)
+{}
+
+CCARemoteBLE::~CCARemoteBLE() {
+  delete _serial;
+}
+
+void CCARemoteBLE::begin(String blePassword) {
+  _blePassword = blePassword;
+  if (debugMode == CCA_DEBUG_OFF) Serial.begin(9600);
+  Serial.println("\nCCA Remote startet (BLE/HM-10)...");
+  Serial.println("Geraetename: " + deviceName);
+
+  _serial = new SoftwareSerial(_rxPin, _txPin);
+  _serial->begin(_baudRate);
+  delay(500);
+
+  // Eingangspuffer leeren
+  while (_serial->available()) _serial->read();
+
+  // Geraetename setzen (HM-10: max. 12 Zeichen)
+  String n = deviceName.substring(0, min((int)deviceName.length(), 12));
+  _serial->print("AT+NAME" + n);
+  delay(200);
+
+  // Slave-Modus sicherstellen
+  _serial->print("AT+ROLE0");
+  delay(200);
+
+  // Neustart damit Einstellungen uebernommen werden
+  _serial->print("AT+RESET");
+  delay(800);
+
+  // Puffer nach Reset leeren
+  while (_serial->available()) _serial->read();
+
+  Serial.println("HM-10 bereit! (RX=" + String(_rxPin) + ", TX=" + String(_txPin) + ")");
+  if (!blePassword.isEmpty()) {
+    Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
+  }
+  Serial.println("Warte auf Verbindung...\n");
+}
+
+void CCARemoteBLE::handle() {
+  // Alle verfuegbaren Bytes einlesen
+  while (_serial->available()) {
+    _rxBuffer += (char)_serial->read();
+    _lastByteTime = millis();
+  }
+
+  // Nach 20 ms Pause ohne neue Bytes → Paket vollstaendig
+  if (_rxBuffer.length() > 0 && (millis() - _lastByteTime) >= 20) {
+    String data = _rxBuffer;
+    _rxBuffer   = "";
+    data.trim();
+    if (data.length() > 0) {
+      _processRx(data);
+    }
+  }
+}
+
+bool CCARemoteBLE::isConnected() {
+  return _connected;
+}
+
+void CCARemoteBLE::sendInternal(String key, String value) {
+  if (_connected && _authenticated) {
+    _sendRaw(key + ":" + value);
+  }
+}
+
+void CCARemoteBLE::_processRx(String data) {
+  // Verbindungs-Events (je nach HM-10-Firmware-Version)
+  if (data.indexOf("OK+CONN") >= 0 || data.indexOf("+CONNECTED") >= 0) {
+    _connected     = true;
+    _authenticated = _blePassword.isEmpty();
+    Serial.println("Geraet verbunden!");
+    return;
+  }
+  if (data.indexOf("OK+LOST") >= 0 || data.indexOf("+DISCONNECTED") >= 0) {
+    _connected     = false;
+    _authenticated = false;
+    Serial.println("Geraet getrennt!");
+    return;
+  }
+
+  // AT-Antworten des Moduls ignorieren
+  if (data.startsWith("OK+")) return;
+
+  if (!_connected) return;
+
+  // Authentifizierung pruefen, falls Passwort gesetzt
+  if (!_blePassword.isEmpty() && !_authenticated) {
+    if (data == "AUTH:" + _blePassword) {
+      _authenticated = true;
+      Serial.println("BLE Authentifizierung erfolgreich!");
+      _sendRaw("AUTH:OK");
+    } else {
+      Serial.println("BLE Authentifizierung fehlgeschlagen!");
+      _sendRaw("AUTH:FAIL");
+      // HM-10 kann nicht aktiv trennen – als getrennt markieren
+      // damit keine weiteren Befehle verarbeitet werden
+      _connected = false;
+    }
+    return;
+  }
+
+  if (!_authenticated) return;
+
+  processCommand(data);
+}
+
+void CCARemoteBLE::_sendRaw(String msg) {
+  if (_serial) _serial->print(msg);
+}
+
+#endif // ESP32
