@@ -4,6 +4,7 @@
  * Plattform-Erkennung (automatisch):
  *   ESP32   → WiFi.h + WebServer.h
  *   ESP8266 → ESP8266WiFi.h + ESP8266WebServer.h
+ *   AVR     → nicht unterstützt (Datei wird leer kompiliert)
  *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
@@ -13,6 +14,8 @@
 
 #ifndef CCAREMOTE_WIFI_H
 #define CCAREMOTE_WIFI_H
+
+#if !defined(__AVR__)
 
 #include "CCARemote.h"
 
@@ -48,5 +51,7 @@ class CCARemoteWiFi : public CCARemote {
     void handleCommand();
     void handleDisplay();
 };
+
+#endif // !__AVR__
 
 #endif // CCAREMOTE_WIFI_H

@@ -1,30 +1,69 @@
 /*
  * CCARemote.h – Abstract Base Class Declaration
  *
+ * Plattform-Erkennung (automatisch):
+ *   AVR (Uno/Nano) → fixe Arrays + Funktionszeiger (kein std::function/map)
+ *   ESP32 / andere → std::function + std::map (volle C++ Standardbibliothek)
+ *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ * Version: 1.1.0 | 2026-05-07 | MIT – see LICENSE
  */
 
 #ifndef CCAREMOTE_H
 #define CCAREMOTE_H
 
 #include <Arduino.h>
-#include <functional>
-#include <map>
-#include <vector>
 
-// Debug-Modus Flags (kombinierbar mit |)
+// Debug-Modus Flags
 enum CCADebugMode {
-  CCA_DEBUG_OFF = 0,  // kein Debug-Output
-  CCA_DEBUG_IN  = 1,  // empfangene Werte ausgeben
-  CCA_DEBUG_OUT = 2,  // gesendete Werte ausgeben
-  CCA_DEBUG_ALL = 3   // empfangene und gesendete Werte ausgeben
+  CCA_DEBUG_OFF = 0,
+  CCA_DEBUG_IN  = 1,
+  CCA_DEBUG_OUT = 2,
+  CCA_DEBUG_ALL = 3
 };
 
-// Abstrakte Basisklasse - nicht direkt verwenden!
-// Verwende: CCARemoteBLE, CCARemoteWiFi
+// ================================================================
+#if defined(__AVR__)
+// ================================================================
+//  AVR (Uno/Nano) – kein std::function, keine std::map
+//  Maximale Anzahl registrierbarer Callbacks / Variablen
+// ================================================================
+#ifndef CCA_MAX_CALLBACKS
+  #define CCA_MAX_CALLBACKS 8
+#endif
+#ifndef CCA_MAX_RECEIVERS
+  #define CCA_MAX_RECEIVERS 8
+#endif
+#ifndef CCA_MAX_DISPLAY
+  #define CCA_MAX_DISPLAY 8
+#endif
+
+struct _CCACmd  { String key; void (*fn)(); };
+struct _CCACmdV { String key; void (*fn)(String); };
+
+struct _CCARecv {
+  String key;
+  enum Type : uint8_t { INT_T, BOOL_T, FLOAT_T, STRING_T } type;
+  void* ptr;
+};
+
+struct _CCADisplay { String key; String value; };
+
+// ================================================================
+#else
+// ================================================================
+//  ESP32 / andere – volle C++ Standardbibliothek
+// ================================================================
+#include <functional>
+#include <map>
+
+#endif // __AVR__
+
+// ================================================================
+//  Gemeinsame Basisklasse
+// ================================================================
 class CCARemote {
   public:
     CCARemote(String name, String prefix = "CCA-");
@@ -33,16 +72,19 @@ class CCARemote {
     virtual void handle()      = 0;
     virtual bool isConnected() = 0;
 
+#if defined(__AVR__)
+    void onCommand(String cmd, void (*callback)());
+    void onCommand(String cmd, void (*callback)(String));
+#else
     void onCommand(String cmd, std::function<void()> callback);
     void onCommand(String cmd, std::function<void(String)> callback);
+#endif
 
-    // Variable Binding: remote.handle() aktualisiert die Variable automatisch
-    void receive(String cmd, int&    var);   // fuer Slider (0-255), Zahlenwerte
-    void receive(String cmd, bool&   var);   // fuer Button, Switch (true/false)
-    void receive(String cmd, float&  var);   // fuer Dezimalwerte
-    void receive(String cmd, String& var);   // fuer Texteingabe
+    void receive(String cmd, int&    var);
+    void receive(String cmd, bool&   var);
+    void receive(String cmd, float&  var);
+    void receive(String cmd, String& var);
 
-    // Debug-Modus: empfangene und/oder gesendete Werte im Seriellen Monitor ausgeben
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
 
     void send(String message);
@@ -52,16 +94,34 @@ class CCARemote {
     void send(String key, float value, int decimals);
 
   protected:
-    String deviceName;
-    std::map<String, std::function<void()>>       commands;
-    std::map<String, std::function<void(String)>> commandsWithValue;
-    std::map<String, String> displayValues;
-    String lastCommand;
-    bool   commandReceived;
+    String       deviceName;
+    String       lastCommand;
+    bool         commandReceived;
     CCADebugMode debugMode;
 
     void processCommand(String cmd);
     virtual void sendInternal(String key, String value) = 0;
+
+    // Display-Werte: auf AVR fixes Array, sonst std::map
+#if defined(__AVR__)
+    _CCADisplay _display[CCA_MAX_DISPLAY];
+    uint8_t     _displayCount;
+#else
+    std::map<String, String> displayValues;
+#endif
+
+  private:
+#if defined(__AVR__)
+    _CCACmd  _cmds[CCA_MAX_CALLBACKS];
+    _CCACmdV _cmdsV[CCA_MAX_CALLBACKS];
+    uint8_t  _cmdCount;
+    uint8_t  _cmdVCount;
+    _CCARecv _recv[CCA_MAX_RECEIVERS];
+    uint8_t  _recvCount;
+#else
+    std::map<String, std::function<void()>>       commands;
+    std::map<String, std::function<void(String)>> commandsWithValue;
+#endif
 };
 
 #endif // CCAREMOTE_H

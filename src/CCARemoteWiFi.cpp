@@ -9,6 +9,8 @@
 
 #include "CCARemoteWiFi.h"
 
+#if !defined(__AVR__)
+
 CCARemoteWiFi::CCARemoteWiFi(String name, String prefix) : CCARemote(name, prefix) {
   webServer   = nullptr;
   wifiEnabled = false;
@@ -27,7 +29,7 @@ void CCARemoteWiFi::begin(String wifiPassword) {
   Serial.println("Geraetename: " + deviceName);
 
   bool success;
-  if (wifiPassword.isEmpty()) {
+  if (wifiPassword.length() == 0) {
     success = WiFi.softAP(deviceName.c_str());
   } else {
     success = WiFi.softAP(deviceName.c_str(), wifiPassword.c_str());
@@ -43,7 +45,7 @@ void CCARemoteWiFi::begin(String wifiPassword) {
   Serial.println(deviceName);
   Serial.print("IP-Adresse: ");
   Serial.println(WiFi.softAPIP());
-  if (!wifiPassword.isEmpty()) {
+  if (!wifiPassword.length() == 0) {
     Serial.print("Passwort: ");
     Serial.println(wifiPassword);
   }
@@ -110,3 +112,5 @@ void CCARemoteWiFi::handleDisplay() {
   json += "}";
   webServer->send(200, "application/json", json);
 }
+
+#endif // !__AVR__

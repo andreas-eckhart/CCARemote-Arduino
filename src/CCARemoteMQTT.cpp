@@ -9,6 +9,8 @@
 
 #include "CCARemoteMQTT.h"
 
+#if !defined(__AVR__)
+
 #if defined(__has_include) && __has_include(<PubSubClient.h>)
 
 CCARemoteMQTT* CCARemoteMQTT::_instance = nullptr;
@@ -175,3 +177,5 @@ void CCARemoteMQTT::sendDisplayInternal(String key, String value) {
 }
 
 #endif // __has_include(<PubSubClient.h>)
+
+#endif // !__AVR__

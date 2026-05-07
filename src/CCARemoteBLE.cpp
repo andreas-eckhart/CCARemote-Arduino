@@ -29,7 +29,7 @@ public:
   ServerCallbacks(CCARemoteBLE* p) : parent(p) {}
   void onConnect(BLEServer*) override {
     parent->deviceConnected = true;
-    parent->authenticated   = parent->blePassword.isEmpty();
+    parent->authenticated   = parent->blePassword.length() == 0;
     Serial.println("Geraet verbunden!");
   }
   void onDisconnect(BLEServer*) override {
@@ -48,7 +48,7 @@ public:
     String value = pChar->getValue().c_str();
     if (value.length() == 0) return;
 
-    if (!parent->blePassword.isEmpty() && !parent->authenticated) {
+    if (!parent->blePassword.length() == 0 && !parent->authenticated) {
       if (value == "AUTH:" + parent->blePassword) {
         parent->authenticated = true;
         Serial.println("BLE Authentifizierung erfolgreich!");
@@ -114,7 +114,7 @@ void CCARemoteBLE::begin(String blePassword) {
   BLEDevice::startAdvertising();
 
   Serial.println("BLE Server laeuft!");
-  if (!blePassword.isEmpty()) {
+  if (!blePassword.length() == 0) {
     Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
   }
   Serial.println("Warte auf Verbindung...\n");
@@ -189,7 +189,7 @@ void CCARemoteBLE::begin(String blePassword) {
   while (_serial->available()) _serial->read();
 
   Serial.println("HM-10 bereit! (RX=" + String(_rxPin) + ", TX=" + String(_txPin) + ")");
-  if (!blePassword.isEmpty()) {
+  if (!blePassword.length() == 0) {
     Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
   }
   Serial.println("Warte auf Verbindung...\n");
@@ -227,7 +227,7 @@ void CCARemoteBLE::_processRx(String data) {
   // Verbindungs-Events (je nach HM-10-Firmware-Version)
   if (data.indexOf("OK+CONN") >= 0 || data.indexOf("+CONNECTED") >= 0) {
     _connected     = true;
-    _authenticated = _blePassword.isEmpty();
+    _authenticated = _blePassword.length() == 0;
     Serial.println("Geraet verbunden!");
     return;
   }
@@ -244,7 +244,7 @@ void CCARemoteBLE::_processRx(String data) {
   if (!_connected) return;
 
   // Authentifizierung pruefen, falls Passwort gesetzt
-  if (!_blePassword.isEmpty() && !_authenticated) {
+  if (!_blePassword.length() == 0 && !_authenticated) {
     if (data == "AUTH:" + _blePassword) {
       _authenticated = true;
       Serial.println("BLE Authentifizierung erfolgreich!");

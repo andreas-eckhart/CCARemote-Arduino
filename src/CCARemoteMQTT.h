@@ -10,6 +10,8 @@
 #ifndef CCAREMOTE_MQTT_H
 #define CCAREMOTE_MQTT_H
 
+#if !defined(__AVR__)
+
 #include "CCARemote.h"
 
 // CCARemoteMQTT erfordert die Bibliothek "PubSubClient" (Bibliotheks-Manager).
@@ -68,5 +70,7 @@ class CCARemoteMQTT : public CCARemote {
   #warning "PubSubClient nicht installiert! CCARemoteMQTT nicht verfuegbar."
   #warning "Installiere 'PubSubClient' ueber den Arduino Bibliotheks-Manager."
 #endif // __has_include(<PubSubClient.h>)
+
+#endif // !__AVR__
 
 #endif // CCAREMOTE_MQTT_H
