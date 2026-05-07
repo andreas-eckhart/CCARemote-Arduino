@@ -50,6 +50,7 @@ void CCARemoteWiFi::begin(String wifiPassword) {
 
   webServer = new WebServer(80);
   webServer->on("/",        HTTP_GET,  [this]() { this->handleRoot();    });
+  webServer->on("/status",  HTTP_GET,  [this]() { this->handleStatus();  });
   webServer->on("/command", HTTP_POST, [this]() { this->handleCommand(); });
   webServer->on("/display", HTTP_GET,  [this]() { this->handleDisplay(); });
   webServer->begin();
@@ -70,6 +71,11 @@ bool CCARemoteWiFi::isConnected() {
 
 void CCARemoteWiFi::sendInternal(String key, String value) {
   displayValues[key] = value;
+}
+
+void CCARemoteWiFi::handleStatus() {
+  String json = "{\"type\":\"CCARemote\",\"device\":\"" + deviceName + "\"}";
+  webServer->send(200, "application/json", json);
 }
 
 void CCARemoteWiFi::handleRoot() {

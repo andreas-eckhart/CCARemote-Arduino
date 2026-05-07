@@ -32,6 +32,7 @@ class CCARemoteWiFi : public CCARemote {
     bool       wifiEnabled;
 
     void handleRoot();
+    void handleStatus();
     void handleCommand();
     void handleDisplay();
 };

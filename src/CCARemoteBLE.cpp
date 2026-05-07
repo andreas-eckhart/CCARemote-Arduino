@@ -44,6 +44,9 @@ public:
         Serial.println("BLE Authentifizierung erfolgreich!");
       } else {
         Serial.println("BLE Authentifizierung fehlgeschlagen! Verbindung wird getrennt.");
+        parent->pDisplayChar->setValue("AUTH:FAIL");
+        parent->pDisplayChar->notify();
+        delay(50);
         parent->pServer->disconnect(parent->pServer->getConnId());
       }
       return;
