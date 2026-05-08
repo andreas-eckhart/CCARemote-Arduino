@@ -243,7 +243,12 @@ void CCARemote::_resyncDisplay() {
 
 void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
   debugMode = mode;
-  if (mode != CCA_DEBUG_OFF) Serial.begin(baudRate);
+  if (mode != CCA_DEBUG_OFF) {
+    Serial.begin(baudRate);
+#if defined(ESP8266)
+    delay(3000);  // ESP8266: warten bis Serial Monitor nach Upload/Power-On bereit ist
+#endif
+  }
   if (mode == CCA_DEBUG_OFF)  Serial.println("[CCA] Debug-Modus deaktiviert");
   if (mode == CCA_DEBUG_IN)   Serial.println("[CCA] Debug-Modus: nur IN");
   if (mode == CCA_DEBUG_OUT)  Serial.println("[CCA] Debug-Modus: nur OUT");

@@ -28,7 +28,7 @@ Unterstützte Hardware:
 | Klasse | Protokoll | `#include` | Hardware |
 |---|---|---|---|
 | `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` | ESP32 oder Arduino + HM-10 |
-| `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` | ESP32 |
+| `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` | ESP32, ESP8266 |
 
 > `CCARemoteBLE` erkennt die Zielplattform **automatisch beim Kompilieren** und wählt die passende Implementierung – der Sketch-Code bleibt auf beiden Plattformen identisch.
 
@@ -146,10 +146,12 @@ void loop() {
 }
 ```
 
-Der ESP32 erstellt einen WLAN-Hotspot mit dem Namen `CCA-MeinName`.  
+ESP32 und ESP8266 erstellen einen WLAN-Hotspot mit dem Namen `CCA-MeinName`.  
 Die App verbindet sich damit und sendet Befehle über HTTP.
 
 **`begin(wifiPassword)`** – Passwort weglassen oder leer lassen für ein offenes Netzwerk.
+
+> **Hinweis Passwortlänge:** WPA2 erfordert mindestens **8 Zeichen**. Ein kürzeres Passwort führt dazu, dass der Hotspot nicht gestartet wird. Die Library gibt in diesem Fall eine Fehlermeldung im Seriellen Monitor aus.
 
 ---
 

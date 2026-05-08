@@ -4,7 +4,7 @@
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.0.0 | 2026-05-03 | MIT – see LICENSE
+ * Version: 1.1.1 | 2026-05-08 | MIT – see LICENSE
  */
 
 #include "CCARemoteWiFi.h"
@@ -24,9 +24,29 @@ CCARemoteWiFi::~CCARemoteWiFi() {
 }
 
 void CCARemoteWiFi::begin(String wifiPassword) {
-  if (debugMode == CCA_DEBUG_OFF) Serial.begin(115200);
+  if (debugMode == CCA_DEBUG_OFF) {
+    Serial.begin(115200);
+#if defined(ESP8266)
+    delay(3000);
+#endif
+  }
   Serial.println("\nCCA Remote startet (WiFi)...");
   Serial.println("Geraetename: " + deviceName);
+
+#if defined(ESP8266)
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_OFF);
+  delay(100);
+  WiFi.mode(WIFI_AP);
+  delay(100);
+#endif
+
+  if (wifiPassword.length() > 0 && wifiPassword.length() < 8) {
+    while (true) {
+      Serial.println("[CCA] FEHLER: WiFi-Passwort muss mindestens 8 Zeichen lang sein!");
+      delay(2000);
+    }
+  }
 
   bool success;
   if (wifiPassword.length() == 0) {
@@ -35,9 +55,15 @@ void CCARemoteWiFi::begin(String wifiPassword) {
     success = WiFi.softAP(deviceName.c_str(), wifiPassword.c_str());
   }
 
+#if defined(ESP8266)
+  delay(100);  // ESP8266: kurz warten bis IP vergeben ist
+#endif
+
   if (!success) {
-    Serial.println("WiFi AP Start fehlgeschlagen!");
-    return;
+    while (true) {
+      Serial.println("[CCA] FEHLER: WiFi AP Start fehlgeschlagen!");
+      delay(2000);
+    }
   }
 
   wifiEnabled = true;
@@ -45,7 +71,7 @@ void CCARemoteWiFi::begin(String wifiPassword) {
   Serial.println(deviceName);
   Serial.print("IP-Adresse: ");
   Serial.println(WiFi.softAPIP());
-  if (!wifiPassword.length() == 0) {
+  if (wifiPassword.length() > 0) {
     Serial.print("Passwort: ");
     Serial.println(wifiPassword);
   }
@@ -65,6 +91,17 @@ void CCARemoteWiFi::handle() {
   if (wifiEnabled && webServer != nullptr) {
     webServer->handleClient();
   }
+#if defined(ESP8266)
+  // Startinfo 10 s lang alle 2 s wiederholen – Serial Monitor öffnet sich oft erst nach dem Upload
+  static unsigned long startTime = millis();
+  static unsigned long lastPrint = 0;
+  if (wifiEnabled && millis() - startTime < 10000) {
+    if (millis() - lastPrint >= 2000) {
+      lastPrint = millis();
+      Serial.println("[CCA] WiFi AP: " + deviceName + " | IP: " + WiFi.softAPIP().toString());
+    }
+  }
+#endif
 }
 
 bool CCARemoteWiFi::isConnected() {
