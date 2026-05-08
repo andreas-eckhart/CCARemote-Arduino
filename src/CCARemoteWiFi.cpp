@@ -4,7 +4,7 @@
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.1.1 | 2026-05-08 | MIT – see LICENSE
+ * Version: 1.2.0 | 2026-05-08 | MIT – see LICENSE
  */
 
 #include "CCARemoteWiFi.h"
@@ -12,8 +12,9 @@
 #if !defined(__AVR__)
 
 CCARemoteWiFi::CCARemoteWiFi(String name, String prefix) : CCARemote(name, prefix) {
-  webServer   = nullptr;
-  wifiEnabled = false;
+  webServer      = nullptr;
+  wifiEnabled    = false;
+  _lastRequestMs = 0;
 }
 
 CCARemoteWiFi::~CCARemoteWiFi() {
@@ -105,7 +106,15 @@ void CCARemoteWiFi::handle() {
 }
 
 bool CCARemoteWiFi::isConnected() {
-  return wifiEnabled && (WiFi.softAPgetStationNum() > 0);
+  if (!wifiEnabled) return false;
+  if (WiFi.softAPgetStationNum() == 0) return false;
+  // Kein HTTP-Request seit CONNECTION_TIMEOUT_MS, oder expliziter Disconnect → false
+  if (_lastRequestMs == 0 || (millis() - _lastRequestMs) > CONNECTION_TIMEOUT_MS) return false;
+  return true;
+}
+
+void CCARemoteWiFi::_updateLastRequest() {
+  _lastRequestMs = millis();
 }
 
 void CCARemoteWiFi::sendInternal(String key, String value) {
@@ -113,11 +122,13 @@ void CCARemoteWiFi::sendInternal(String key, String value) {
 }
 
 void CCARemoteWiFi::handleStatus() {
+  _updateLastRequest();
   String json = "{\"type\":\"CCARemote\",\"device\":\"" + deviceName + "\"}";
   webServer->send(200, "application/json", json);
 }
 
 void CCARemoteWiFi::handleRoot() {
+  _updateLastRequest();
   String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
   html += "<title>" + deviceName + "</title></head><body>";
   html += "<h1>" + deviceName + "</h1>";
@@ -134,11 +145,20 @@ void CCARemoteWiFi::handleCommand() {
     webServer->send(400, "application/json", "{\"error\":\"no body\"}");
     return;
   }
-  processCommand(webServer->arg("plain"));
+  String body = webServer->arg("plain");
+  // App-seitiger Disconnect – Timeout sofort auslösen
+  if (body == "disconnect:1") {
+    _lastRequestMs = 0;
+    webServer->send(200, "application/json", "{\"status\":\"ok\"}");
+    return;
+  }
+  _updateLastRequest();
+  processCommand(body);
   webServer->send(200, "application/json", "{\"status\":\"ok\"}");
 }
 
 void CCARemoteWiFi::handleDisplay() {
+  _updateLastRequest();
   String json = "{";
   bool first = true;
   for (auto const& pair : displayValues) {

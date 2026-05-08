@@ -9,7 +9,7 @@
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.1.1 | 2026-05-08 | MIT – see LICENSE
+ * Version: 1.2.0 | 2026-05-08 | MIT – see LICENSE
  */
 
 #ifndef CCAREMOTE_WIFI_H
@@ -45,11 +45,16 @@ class CCARemoteWiFi : public CCARemote {
   private:
     CCAWebServer* webServer;
     bool          wifiEnabled;
+    unsigned long _lastRequestMs;
+
+    // Timeout in ms ohne HTTP-Request → isConnected() gibt false zurück
+    static const unsigned long CONNECTION_TIMEOUT_MS = 10000;
 
     void handleRoot();
     void handleStatus();
     void handleCommand();
     void handleDisplay();
+    void _updateLastRequest();
 };
 
 #endif // !__AVR__
