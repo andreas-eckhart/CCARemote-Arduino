@@ -10,7 +10,9 @@ Unterstützte Protokolle:
 
 Unterstützte Hardware:
 - **ESP32** – natives BLE, WiFi, MQTT
+- **ESP8266** - WiFi, MQTT
 - **Arduino Uno / Nano** – BLE über HM-10-Modul (SoftwareSerial)
+- **Raspberry Pi Pico 2W** – natives BLE, WiFi, MQTT (erfordert CCARemote-MicroPython Bibliothek)
 
 ---
 
