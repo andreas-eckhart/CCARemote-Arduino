@@ -101,6 +101,7 @@ class CCARemote {
 
     void processCommand(String cmd);
     void _resyncDisplay();
+    void _sendIfChanged(String key, String value);
     bool _pendingResync;
     virtual void sendInternal(String key, String value) = 0;
 

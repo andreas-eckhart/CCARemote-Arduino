@@ -255,35 +255,39 @@ void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
   if (mode == CCA_DEBUG_ALL)  Serial.println("[CCA] Debug-Modus: IN + OUT");
 }
 
-void CCARemote::send(String message) {
-  int colonPos = message.indexOf(':');
-  if (colonPos > 0) {
-    String key   = message.substring(0, colonPos);
-    String value = message.substring(colonPos + 1);
-    if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + value);
-    sendInternal(key, value);
-  } else {
-    if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + message);
-    sendInternal(message, "");
+void CCARemote::_sendIfChanged(String key, String value) {
+#if !defined(__AVR__)
+  auto it = displayValues.find(key);
+  if (it != displayValues.end() && it->second == value) return;
+  displayValues[key] = value;
+#endif
+  if (debugMode & CCA_DEBUG_OUT) {
+    if (value.length() > 0) Serial.println("[CCA] OUT " + key + " = " + value);
+    else                     Serial.println("[CCA] OUT " + key);
   }
-}
-
-void CCARemote::send(String key, String value) {
-  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + value);
   sendInternal(key, value);
 }
 
+void CCARemote::send(String message) {
+  int colonPos = message.indexOf(':');
+  if (colonPos > 0)
+    _sendIfChanged(message.substring(0, colonPos), message.substring(colonPos + 1));
+  else
+    _sendIfChanged(message, "");
+}
+
+void CCARemote::send(String key, String value) {
+  _sendIfChanged(key, value);
+}
+
 void CCARemote::send(String key, int value) {
-  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + String(value));
-  sendInternal(key, String(value));
+  _sendIfChanged(key, String(value));
 }
 
 void CCARemote::send(String key, float value) {
-  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + String(value, 1));
-  sendInternal(key, String(value, 1));
+  _sendIfChanged(key, String(value, 1));
 }
 
 void CCARemote::send(String key, float value, int decimals) {
-  if (debugMode & CCA_DEBUG_OUT) Serial.println("[CCA] OUT " + key + " = " + String(value, decimals));
-  sendInternal(key, String(value, decimals));
+  _sendIfChanged(key, String(value, decimals));
 }
