@@ -46,6 +46,7 @@ class CCARemoteWiFi : public CCARemote {
     CCAWebServer* webServer;
     bool          wifiEnabled;
     unsigned long _lastRequestMs;
+    bool          _wasConnected;
 
     // Timeout in ms ohne HTTP-Request → isConnected() gibt false zurück
     static const unsigned long CONNECTION_TIMEOUT_MS = 10000;

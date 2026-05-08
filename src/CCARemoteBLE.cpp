@@ -31,12 +31,12 @@ public:
     parent->deviceConnected = true;
     parent->authenticated   = parent->blePassword.length() == 0;
     parent->_pendingResync  = true;
-    Serial.println("Geraet verbunden!");
+    if (parent->debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung hergestellt");
   }
   void onDisconnect(BLEServer*) override {
     parent->deviceConnected = false;
     parent->authenticated   = false;
-    Serial.println("Geraet getrennt!");
+    if (parent->debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung getrennt");
     BLEDevice::startAdvertising();
   }
 };
@@ -240,13 +240,13 @@ void CCARemoteBLE::_processRx(String data) {
     _connected     = true;
     _authenticated = _blePassword.length() == 0;
     _pendingResync = true;
-    Serial.println("Geraet verbunden!");
+    if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung hergestellt");
     return;
   }
   if (data.indexOf("OK+LOST") >= 0 || data.indexOf("+DISCONNECTED") >= 0) {
     _connected     = false;
     _authenticated = false;
-    Serial.println("Geraet getrennt!");
+    if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung getrennt");
     return;
   }
 

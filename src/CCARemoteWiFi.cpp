@@ -15,6 +15,7 @@ CCARemoteWiFi::CCARemoteWiFi(String name, String prefix) : CCARemote(name, prefi
   webServer      = nullptr;
   wifiEnabled    = false;
   _lastRequestMs = 0;
+  _wasConnected  = false;
 }
 
 CCARemoteWiFi::~CCARemoteWiFi() {
@@ -92,6 +93,15 @@ void CCARemoteWiFi::handle() {
   if (wifiEnabled && webServer != nullptr) {
     webServer->handleClient();
   }
+
+  bool nowConnected = isConnected();
+  if (nowConnected != _wasConnected) {
+    _wasConnected = nowConnected;
+    if (debugMode != CCA_DEBUG_OFF) {
+      Serial.println(nowConnected ? "[CCA] Verbindung hergestellt" : "[CCA] Verbindung getrennt");
+    }
+  }
+
 #if defined(ESP8266)
   // Startinfo 10 s lang alle 2 s wiederholen – Serial Monitor öffnet sich oft erst nach dem Upload
   static unsigned long startTime = millis();
