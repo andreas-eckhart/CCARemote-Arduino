@@ -155,6 +155,23 @@ Die App verbindet sich damit und sendet Befehle über HTTP.
 
 ---
 
+## Elemente und Typen
+
+| Element | Typ | Richtung | Hinweis |
+|---|---|---|---|
+| Button | `bool` | App → Arduino | `true` = gedrückt |
+| Switch | `bool` | App → Arduino | `true` = ein |
+| Slider | `int` | App → Arduino | Bereich in der App einstellbar (Standard 0–255) |
+| Joystick | `int` | App → Arduino | X und Y als separate Element-IDs |
+| Input | `String` | App → Arduino | Freier Text |
+| Display | `send()` | Arduino → App | Messwert anzeigen |
+| Gauge / Bar | `send()` | Arduino → App | Balken / Kreisbogen |
+| Chart | `send()` | Arduino → App | Liniendiagramm |
+| Status-LED | `send()` | Arduino → App | Ganzzahl 0–3 |
+| Label | `send()` | Arduino → App | Text (optional, nur wenn Element-ID gesetzt) |
+
+---
+
 ## API-Referenz
 
 ### `begin()` – Verbindung starten
@@ -194,8 +211,17 @@ void loop() {
 | Typ | Verwendung |
 |---|---|
 | `bool` | Button (gedrückt = true), Switch (an = true) |
-| `int` | Slider (0–255), ganze Zahlen |
+| `int` | Slider (0–255), Joystick-Achse (−255 – +255) |
 | `float` | Schieberegler mit Dezimalwerten |
+| `String` | Texteingabe (Input) |
+
+> **Joystick:** Jede Achse hat eine eigene Element-ID. X- und Y-Variable werden separat mit `remote.receive()` verknüpft.
+>
+> ```cpp
+> int axisX = 0, axisY = 0;
+> remote.receive("axisX", axisX);  // Joystick X (−255 – +255)
+> remote.receive("axisY", axisY);  // Joystick Y (−255 – +255)
+> ```
 
 ---
 
