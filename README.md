@@ -12,7 +12,7 @@ Unterstützte Hardware:
 - **ESP32** – natives BLE, WiFi, MQTT
 - **ESP8266** - WiFi, MQTT
 - **Arduino Uno / Nano** – BLE über HM-10-Modul (SoftwareSerial)
-- **Raspberry Pi Pico 2W** – natives BLE, WiFi, MQTT (erfordert CCARemote-MicroPython Bibliothek)
+- **Raspberry Pi Pico 2W** – natives BLE, WiFi, MQTT (erfordert die [CCARemote-MicroPython](https://github.com/ccaprojects/CCARemote-MicroPython) Bibliothek)
 
 ---
 
@@ -232,6 +232,8 @@ remote.send("spannung", 3.7, 2);  // "3.70"
 | `send(key, int)` | Ganzzahl |
 | `send(key, float)` | Dezimalzahl (1 Nachkommastelle) |
 | `send(key, float, int)` | Dezimalzahl mit gewünschten Nachkommastellen |
+
+> **Hinweis – Label-Element:** Neben Display-, Gauge-, Chart- und LED-Elementen kann auch das **Label**-Element Werte empfangen. `remote.send("label1", "Text")` aktualisiert den angezeigten Text des Labels dynamisch. Die Element-ID muss dazu im Label-Editor der App eingetragen sein.
 
 ---
 

@@ -66,8 +66,12 @@ void loop() {
       digitalWrite(LED_INPUT, command == "ON" ? HIGH : LOW);
     }
 
-    // Joystick-Werte und Slider-Wert an Display-Elemente der App senden
+    // Slider-Wert an Display-Elemente der App senden
     remote.send("display1", slider1_val);
+
+    // Hardware-Typ (ESP32) an Label-Element der App senden
+    remote.send("label1", "Pico 2W");
+    
   } else {
     // Alle Ausgaben auf sicheren Zustand setzen wenn keine Verbindung
     digitalWrite(LED_BUTTON, LOW);
