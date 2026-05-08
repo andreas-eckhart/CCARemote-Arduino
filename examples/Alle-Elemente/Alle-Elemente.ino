@@ -70,8 +70,8 @@ void loop() {
     remote.send("display1", slider1_val);
 
     // Hardware-Typ (ESP32) an Label-Element der App senden
-    remote.send("label1", "Pico 2W");
-    
+    remote.send("label1", "ESP32");
+
   } else {
     // Alle Ausgaben auf sicheren Zustand setzen wenn keine Verbindung
     digitalWrite(LED_BUTTON, LOW);
