@@ -64,8 +64,10 @@ class CCARemoteBLE : public CCARemote {
 
 class CCARemoteBLE : public CCARemote {
   public:
-    // rxPin    – SoftwareSerial RX-Pin am Arduino (Standard: 10)
-    // txPin    – SoftwareSerial TX-Pin am Arduino (Standard: 11)
+    // rxPin    – SoftwareSerial RX-Pin am Arduino (Standard: 10) → HM-10 TXD
+    // txPin    – SoftwareSerial TX-Pin am Arduino (Standard: 11) → HM-10 RXD
+    // Hinweis: Manche Klon-Module haben TXD/RXD vertauscht beschriftet.
+    //          Falls keine Verbindung zustande kommt, Leitungen tauschen.
     // baudRate – Baudrate des HM-10-Moduls         (Standard: 9600)
     CCARemoteBLE(String name, String prefix = "CCA-",
                  uint8_t rxPin = 10, uint8_t txPin = 11,

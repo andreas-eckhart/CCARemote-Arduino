@@ -115,9 +115,11 @@ CCARemoteBLE remote(name, prefix, rxPin, txPin, baudRate);
 
 > ¹ Der HM-10 arbeitet mit 3,3-V-Logik. Ein Spannungsteiler (z. B. 10 kΩ / 20 kΩ) schützt den Eingang des Moduls vor den 5-V-Pegeln des Arduino.
 
+> **Hinweis für Klon-Module:** Viele günstige HM-10 Klon-Module haben TXD und RXD aus der Gegenperspektive beschriftet. Falls keine Verbindung zustande kommt, einfach die beiden Datenleitungen tauschen (Pin 10 ↔ Pin 11).
+
 #### Hinweise zum HM-10
 
-- Die Bibliothek konfiguriert das Modul beim Start automatisch (Name, Slave-Modus, Reset).
+- **BLE-Name:** Der Gerätename muss einmalig manuell per AT-Befehl gesetzt werden, da das AT-Kommando je nach Firmware-Variante unterschiedlich interpretiert wird. Den Namen einmalig mit einem Serial-Terminal senden: `AT+NAMEMeinName` (kein Leerzeichen, kein Zeilenumbruch). Der Name bleibt dauerhaft im Flash des Moduls gespeichert.
 - Bei Auth-Fehler kann das HM-10 die Verbindung nicht aktiv trennen; die App übernimmt das und zeigt die Fehlermeldung an.
 - Gerätenamen werden auf 12 Zeichen begrenzt (HM-10-Firmware-Limit).
 - Getestete Firmware: v5xx. Bei abweichenden Verbindungs-Events (z. B. `AT+CONNECTED` statt `OK+CONN`) ggf. Firmware updaten.

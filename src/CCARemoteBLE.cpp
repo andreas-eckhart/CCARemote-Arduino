@@ -222,6 +222,7 @@ void CCARemoteBLE::handle() {
       _processRx(data);
     }
   }
+
 }
 
 bool CCARemoteBLE::isConnected() {
@@ -243,17 +244,25 @@ void CCARemoteBLE::_processRx(String data) {
     if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung hergestellt");
     return;
   }
-  if (data.indexOf("OK+LOST") >= 0 || data.indexOf("+DISCONNECTED") >= 0) {
+  if (data.indexOf("OK+LOST") >= 0 || data.indexOf("OK+LOSTA") >= 0 ||
+      data.indexOf("+DISCONNECTED") >= 0 || data.indexOf("DISCONNECT") >= 0) {
     _connected     = false;
     _authenticated = false;
-    if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung getrennt");
+    _lastByteTime  = 0;
+    Serial.println("[CCA] Verbindung getrennt");
     return;
   }
 
   // AT-Antworten des Moduls ignorieren
   if (data.startsWith("OK+")) return;
 
-  if (!_connected) return;
+  // Viele HM-10 Klone senden kein Verbindungs-Event → beim ersten Datenpaket implizit verbinden
+  if (!_connected) {
+    _connected     = true;
+    _authenticated = _blePassword.length() == 0;
+    _pendingResync = true;
+    if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung hergestellt (implizit)");
+  }
 
   // Authentifizierung pruefen, falls Passwort gesetzt
   if (!_blePassword.length() == 0 && !_authenticated) {
@@ -273,6 +282,9 @@ void CCARemoteBLE::_processRx(String data) {
   }
 
   if (!_authenticated) return;
+
+  // Auth-Handshake der App ohne Passwort ignorieren
+  if (data == "AUTH" || data.startsWith("AUTH:")) return;
 
   processCommand(data);
 }
