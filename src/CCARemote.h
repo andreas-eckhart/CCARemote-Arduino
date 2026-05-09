@@ -1,18 +1,21 @@
 /*
  * CCARemote.h – Abstract Base Class Declaration
  *
- * Plattform-Erkennung (automatisch):
- *   AVR (Uno/Nano) → fixe Arrays + Funktionszeiger (kein std::function/map)
- *   ESP32 / andere → std::function + std::map (volle C++ Standardbibliothek)
+ * Platform detection (automatic):
+ *   AVR (Uno/Nano) → fixed arrays + function pointers (no std::function/map)
+ *   ESP32 / other  → std::function + std::map (full C++ standard library)
  *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.1.0 | 2026-05-07 | MIT – see LICENSE
+ * MIT – see LICENSE
  */
 
 #ifndef CCAREMOTE_H
 #define CCAREMOTE_H
+
+// Version der Bibliothek
+#define CCAREMOTE_VERSION "1.0.0"
 
 #include <Arduino.h>
 

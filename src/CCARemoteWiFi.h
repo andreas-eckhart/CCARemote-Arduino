@@ -1,15 +1,15 @@
 /*
  * CCARemoteWiFi.h – WiFi Access Point Class
  *
- * Plattform-Erkennung (automatisch):
+ * Platform detection (automatic):
  *   ESP32   → WiFi.h + WebServer.h
  *   ESP8266 → ESP8266WiFi.h + ESP8266WebServer.h
- *   AVR     → nicht unterstützt (Datei wird leer kompiliert)
+ *   AVR     → not supported (file compiles empty)
  *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.2.0 | 2026-05-08 | MIT – see LICENSE
+ * MIT – see LICENSE
  */
 
 #ifndef CCAREMOTE_WIFI_H

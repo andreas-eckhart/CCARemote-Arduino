@@ -1,14 +1,14 @@
 /*
  * CCARemoteBLE.h – Bluetooth Low Energy (BLE) Class
  *
- * Plattform-Erkennung (automatisch):
- *   ESP32        → natives BLE (BLEDevice-Bibliothek)
- *   Arduino Uno/Nano → HM-10-Modul über SoftwareSerial
+ * Platform detection (automatic):
+ *   ESP32            → native BLE (BLEDevice library)
+ *   Arduino Uno/Nano → HM-10 module via SoftwareSerial
  *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
- * Version: 1.1.0 | 2026-05-07 | MIT – see LICENSE
+ * MIT – see LICENSE
  */
 
 #ifndef CCAREMOTE_BLE_H
