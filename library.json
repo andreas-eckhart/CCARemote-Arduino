@@ -1,0 +1,17 @@
+{
+    "name": "CCARemote",
+    "version": "1.0.0",
+    "description": "Flexible BLE & WiFi control of ESP32, ESP8266 and Arduino via the CCA Remote app",
+    "keywords": "BLE, WiFi, dashboard, ESP32, Arduino",
+    "authors": {
+        "name": "A. Eckhart",
+        "maintainer": true
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ccaprojects/CCARemote-Arduino"
+    },
+    "license": "MIT",
+    "frameworks": "arduino",
+    "platforms": "*"
+}
