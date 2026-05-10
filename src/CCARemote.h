@@ -15,7 +15,7 @@
 #define CCAREMOTE_H
 
 // Version der Bibliothek
-#define CCAREMOTE_VERSION "1.0.0"
+#define CCAREMOTE_VERSION "1.0.1"
 
 #include <Arduino.h>
 
