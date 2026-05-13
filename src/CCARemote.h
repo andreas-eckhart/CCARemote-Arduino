@@ -15,7 +15,7 @@
 #define CCAREMOTE_H
 
 // Version der Bibliothek
-#define CCAREMOTE_VERSION "1.0.1"
+#define CCAREMOTE_VERSION "1.1.0"
 
 #include <Arduino.h>
 
@@ -42,6 +42,9 @@ enum CCADebugMode {
 #ifndef CCA_MAX_DISPLAY
   #define CCA_MAX_DISPLAY 8
 #endif
+#ifndef CCA_MAX_COLOR
+  #define CCA_MAX_COLOR 4
+#endif
 
 struct _CCACmd  { String key; void (*fn)(); };
 struct _CCACmdV { String key; void (*fn)(String); };
@@ -51,6 +54,8 @@ struct _CCARecv {
   enum Type : uint8_t { INT_T, BOOL_T, FLOAT_T, STRING_T } type;
   void* ptr;
 };
+
+struct _CCAColorRecv { String key; int* r; int* g; int* b; };
 
 struct _CCADisplay { String key; String value; };
 
@@ -87,6 +92,7 @@ class CCARemote {
     void receive(String cmd, bool&   var);
     void receive(String cmd, float&  var);
     void receive(String cmd, String& var);
+    void receiveColor(String cmd, int& r, int& g, int& b);
 
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
 
@@ -118,12 +124,14 @@ class CCARemote {
 
   private:
 #if defined(__AVR__)
-    _CCACmd  _cmds[CCA_MAX_CALLBACKS];
-    _CCACmdV _cmdsV[CCA_MAX_CALLBACKS];
-    uint8_t  _cmdCount;
-    uint8_t  _cmdVCount;
-    _CCARecv _recv[CCA_MAX_RECEIVERS];
-    uint8_t  _recvCount;
+    _CCACmd      _cmds[CCA_MAX_CALLBACKS];
+    _CCACmdV     _cmdsV[CCA_MAX_CALLBACKS];
+    uint8_t      _cmdCount;
+    uint8_t      _cmdVCount;
+    _CCARecv     _recv[CCA_MAX_RECEIVERS];
+    uint8_t      _recvCount;
+    _CCAColorRecv _colorRecv[CCA_MAX_COLOR];
+    uint8_t       _colorRecvCount;
 #else
     std::map<String, std::function<void()>>       commands;
     std::map<String, std::function<void(String)>> commandsWithValue;

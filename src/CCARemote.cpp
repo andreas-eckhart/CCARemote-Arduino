@@ -23,6 +23,7 @@ CCARemote::CCARemote(String name, String prefix) {
   _cmdCount       = 0;
   _cmdVCount      = 0;
   _recvCount      = 0;
+  _colorRecvCount = 0;
   _displayCount   = 0;
   _pendingResync  = false;
 }
@@ -69,6 +70,13 @@ void CCARemote::receive(String cmd, String& var) {
   }
 }
 
+void CCARemote::receiveColor(String cmd, int& r, int& g, int& b) {
+  if (_colorRecvCount < CCA_MAX_COLOR) {
+    _colorRecv[_colorRecvCount++] = { cmd, &r, &g, &b };
+    Serial.println("Farbe gebunden: " + cmd + " (r,g,b)");
+  }
+}
+
 void CCARemote::processCommand(String cmd) {
   int start = 0;
   while (start <= (int)cmd.length()) {
@@ -82,24 +90,43 @@ void CCARemote::processCommand(String cmd) {
         String key   = part.substring(0, colonPos);
         String value = part.substring(colonPos + 1);
 
-        // Variable-Bindings prüfen
+        // Color-Bindings prüfen
         bool found = false;
-        for (uint8_t i = 0; i < _recvCount; i++) {
-          if (_recv[i].key == key) {
-            if (debugMode & CCA_DEBUG_IN)
-              Serial.println("[CCA] IN  " + key + " = " + value);
-            switch (_recv[i].type) {
-              case _CCARecv::INT_T:
-                *((int*)_recv[i].ptr) = value.toInt(); break;
-              case _CCARecv::BOOL_T:
-                *((bool*)_recv[i].ptr) = (value == "1" || value == "true" || value == "on"); break;
-              case _CCARecv::FLOAT_T:
-                *((float*)_recv[i].ptr) = value.toFloat(); break;
-              case _CCARecv::STRING_T:
-                *((String*)_recv[i].ptr) = value; break;
+        for (uint8_t i = 0; i < _colorRecvCount; i++) {
+          if (_colorRecv[i].key == key) {
+            int s1 = value.indexOf(';');
+            int s2 = value.indexOf(';', s1 + 1);
+            if (s1 > 0 && s2 > s1) {
+              *_colorRecv[i].r = value.substring(0, s1).toInt();
+              *_colorRecv[i].g = value.substring(s1 + 1, s2).toInt();
+              *_colorRecv[i].b = value.substring(s2 + 1).toInt();
             }
+            if (debugMode & CCA_DEBUG_IN)
+              Serial.println("[CCA] IN  " + key + " = R:" + *_colorRecv[i].r +
+                             " G:" + *_colorRecv[i].g + " B:" + *_colorRecv[i].b);
             found = true;
             break;
+          }
+        }
+        // Variable-Bindings prüfen
+        if (!found) {
+          for (uint8_t i = 0; i < _recvCount; i++) {
+            if (_recv[i].key == key) {
+              if (debugMode & CCA_DEBUG_IN)
+                Serial.println("[CCA] IN  " + key + " = " + value);
+              switch (_recv[i].type) {
+                case _CCARecv::INT_T:
+                  *((int*)_recv[i].ptr) = value.toInt(); break;
+                case _CCARecv::BOOL_T:
+                  *((bool*)_recv[i].ptr) = (value == "1" || value == "true" || value == "on"); break;
+                case _CCARecv::FLOAT_T:
+                  *((float*)_recv[i].ptr) = value.toFloat(); break;
+                case _CCARecv::STRING_T:
+                  *((String*)_recv[i].ptr) = value; break;
+              }
+              found = true;
+              break;
+            }
           }
         }
         // Callback mit Wert prüfen
@@ -189,6 +216,21 @@ void CCARemote::receive(String cmd, String& var) {
     if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
   };
   Serial.println("Variable gebunden: " + cmd + " (String)");
+}
+
+void CCARemote::receiveColor(String cmd, int& r, int& g, int& b) {
+  commandsWithValue[cmd] = [this, cmd, &r, &g, &b](String value) {
+    int s1 = value.indexOf(';');
+    int s2 = value.indexOf(';', s1 + 1);
+    if (s1 > 0 && s2 > s1) {
+      r = value.substring(0, s1).toInt();
+      g = value.substring(s1 + 1, s2).toInt();
+      b = value.substring(s2 + 1).toInt();
+    }
+    if (debugMode & CCA_DEBUG_IN)
+      Serial.println("[CCA] IN  " + cmd + " = R:" + r + " G:" + g + " B:" + b);
+  };
+  Serial.println("Farbe gebunden: " + cmd + " (r,g,b)");
 }
 
 void CCARemote::processCommand(String cmd) {

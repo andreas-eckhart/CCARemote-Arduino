@@ -7,5 +7,6 @@ handle	KEYWORD2
 isConnected	KEYWORD2
 onCommand	KEYWORD2
 receive	KEYWORD2
+receiveColor	KEYWORD2
 debug	KEYWORD2
 send	KEYWORD2
