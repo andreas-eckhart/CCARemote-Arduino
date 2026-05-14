@@ -21,12 +21,18 @@ CCARemoteWiFi::CCARemoteWiFi(String name, String prefix) : CCARemote(name, prefi
   wifiEnabled    = false;
   _lastRequestMs = 0;
   _wasConnected  = false;
+  _tcpServer     = nullptr;
+  _tcpBuf        = "";
 }
 
 CCARemoteWiFi::~CCARemoteWiFi() {
   if (webServer != nullptr) {
     webServer->stop();
     delete webServer;
+  }
+  if (_tcpServer != nullptr) {
+    _tcpServer->stop();
+    delete _tcpServer;
   }
 }
 
@@ -89,14 +95,48 @@ void CCARemoteWiFi::begin(String wifiPassword) {
   webServer->on("/command", HTTP_POST, [this]() { this->handleCommand(); });
   webServer->on("/display", HTTP_GET,  [this]() { this->handleDisplay(); });
   webServer->begin();
-
   Serial.println("HTTP Server laeuft auf Port 80");
+
+  _tcpServer = new WiFiServer(81);
+  _tcpServer->begin();
+  Serial.println("TCP Server laeuft auf Port 81");
+
   Serial.println("CCA Remote bereit!\n");
 }
 
 void CCARemoteWiFi::handle() {
   if (wifiEnabled && webServer != nullptr) {
     webServer->handleClient();
+  }
+
+  // --- TCP Port 81: neuen Client annehmen ---
+  if (_tcpServer && !_tcpClient.connected()) {
+    if (_tcpServer->hasClient()) {
+      _tcpClient = _tcpServer->accept();
+      _tcpBuf    = "";
+      // Resync: alle gespeicherten Display-Werte senden
+      for (auto const& p : displayValues)
+        _tcpClient.print(p.first + ":" + p.second + "\n");
+    }
+  }
+
+  // --- TCP Port 81: eingehende Zeilen lesen ---
+  if (_tcpClient.connected()) {
+    while (_tcpClient.available()) {
+      char c = _tcpClient.read();
+      if (c == '\n') {
+        _tcpBuf.trim();
+        if (_tcpBuf == "disconnect:1") {
+          _tcpDisconnect();
+          break;
+        } else if (_tcpBuf.length() > 0) {
+          processCommand(_tcpBuf);
+        }
+        _tcpBuf = "";
+      } else {
+        _tcpBuf += c;
+      }
+    }
   }
 
   bool nowConnected = isConnected();
@@ -122,10 +162,12 @@ void CCARemoteWiFi::handle() {
 
 bool CCARemoteWiFi::isConnected() {
   if (!wifiEnabled) return false;
-  if (WiFi.softAPgetStationNum() == 0) return false;
-  // Kein HTTP-Request seit CONNECTION_TIMEOUT_MS, oder expliziter Disconnect → false
-  if (_lastRequestMs == 0 || (millis() - _lastRequestMs) > CONNECTION_TIMEOUT_MS) return false;
-  return true;
+  return _tcpClient.connected();
+}
+
+void CCARemoteWiFi::_tcpDisconnect() {
+  _tcpClient.stop();
+  _tcpBuf = "";
 }
 
 void CCARemoteWiFi::_updateLastRequest() {
@@ -134,6 +176,8 @@ void CCARemoteWiFi::_updateLastRequest() {
 
 void CCARemoteWiFi::sendInternal(String key, String value) {
   displayValues[key] = value;
+  if (_tcpClient.connected())
+    _tcpClient.print(key + ":" + value + "\n");
 }
 
 void CCARemoteWiFi::handleStatus() {

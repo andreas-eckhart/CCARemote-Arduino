@@ -48,8 +48,12 @@ class CCARemoteWiFi : public CCARemote {
     unsigned long _lastRequestMs;
     bool          _wasConnected;
 
-    // Timeout in ms ohne HTTP-Request → isConnected() gibt false zurück
-    static const unsigned long CONNECTION_TIMEOUT_MS = 10000;
+    // Persistente TCP-Verbindung (Port 81) für App-Kommunikation
+    WiFiServer*   _tcpServer;
+    WiFiClient    _tcpClient;
+    String        _tcpBuf;
+
+    void _tcpDisconnect();
 
     void handleRoot();
     void handleStatus();
