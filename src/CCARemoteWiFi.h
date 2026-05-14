@@ -2,8 +2,8 @@
  * CCARemoteWiFi.h – WiFi Access Point Class
  *
  * Platform detection (automatic):
- *   ESP32   → WiFi.h + WebServer.h
- *   ESP8266 → ESP8266WiFi.h + ESP8266WebServer.h
+ *   ESP32   → WiFi.h
+ *   ESP8266 → ESP8266WiFi.h
  *   AVR     → not supported (file compiles empty)
  *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
@@ -21,12 +21,8 @@
 
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>
-  #include <ESP8266WebServer.h>
-  using CCAWebServer = ESP8266WebServer;
 #else
   #include <WiFi.h>
-  #include <WebServer.h>
-  using CCAWebServer = WebServer;
 #endif
 
 class CCARemoteWiFi : public CCARemote {
@@ -43,23 +39,14 @@ class CCARemoteWiFi : public CCARemote {
     void sendInternal(String key, String value) override;
 
   private:
-    CCAWebServer* webServer;
-    bool          wifiEnabled;
-    unsigned long _lastRequestMs;
-    bool          _wasConnected;
+    bool        wifiEnabled;
+    bool        _wasConnected;
 
-    // Persistente TCP-Verbindung (Port 81) für App-Kommunikation
-    WiFiServer*   _tcpServer;
-    WiFiClient    _tcpClient;
-    String        _tcpBuf;
+    WiFiServer* _tcpServer;
+    WiFiClient  _tcpClient;
+    String      _tcpBuf;
 
     void _tcpDisconnect();
-
-    void handleRoot();
-    void handleStatus();
-    void handleCommand();
-    void handleDisplay();
-    void _updateLastRequest();
 };
 
 #endif // !__AVR__

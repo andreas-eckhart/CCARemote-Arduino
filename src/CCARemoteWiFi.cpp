@@ -2,10 +2,10 @@
  * CCARemoteWiFi.cpp – WiFi Access Point Implementation
  *
  * Platform detection (automatic):
- *   ESP32   → WiFi.h + WebServer.h
- *   ESP8266 → ESP8266WiFi.h + ESP8266WebServer.h
+ *   ESP32   → WiFi.h
+ *   ESP8266 → ESP8266WiFi.h
  *   AVR     → not supported (file compiles empty)
- * 
+ *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
  *
@@ -17,19 +17,13 @@
 #if !defined(__AVR__)
 
 CCARemoteWiFi::CCARemoteWiFi(String name, String prefix) : CCARemote(name, prefix) {
-  webServer      = nullptr;
-  wifiEnabled    = false;
-  _lastRequestMs = 0;
-  _wasConnected  = false;
-  _tcpServer     = nullptr;
-  _tcpBuf        = "";
+  wifiEnabled   = false;
+  _wasConnected = false;
+  _tcpServer    = nullptr;
+  _tcpBuf       = "";
 }
 
 CCARemoteWiFi::~CCARemoteWiFi() {
-  if (webServer != nullptr) {
-    webServer->stop();
-    delete webServer;
-  }
   if (_tcpServer != nullptr) {
     _tcpServer->stop();
     delete _tcpServer;
@@ -69,7 +63,7 @@ void CCARemoteWiFi::begin(String wifiPassword) {
   }
 
 #if defined(ESP8266)
-  delay(100);  // ESP8266: kurz warten bis IP vergeben ist
+  delay(100);
 #endif
 
   if (!success) {
@@ -89,38 +83,26 @@ void CCARemoteWiFi::begin(String wifiPassword) {
     Serial.println(wifiPassword);
   }
 
-  webServer = new CCAWebServer(80);
-  webServer->on("/",        HTTP_GET,  [this]() { this->handleRoot();    });
-  webServer->on("/status",  HTTP_GET,  [this]() { this->handleStatus();  });
-  webServer->on("/command", HTTP_POST, [this]() { this->handleCommand(); });
-  webServer->on("/display", HTTP_GET,  [this]() { this->handleDisplay(); });
-  webServer->begin();
-  Serial.println("HTTP Server laeuft auf Port 80");
-
   _tcpServer = new WiFiServer(81);
   _tcpServer->begin();
   Serial.println("TCP Server laeuft auf Port 81");
-
   Serial.println("CCA Remote bereit!\n");
 }
 
 void CCARemoteWiFi::handle() {
-  if (wifiEnabled && webServer != nullptr) {
-    webServer->handleClient();
-  }
+  if (!wifiEnabled) return;
 
-  // --- TCP Port 81: neuen Client annehmen ---
+  // Neuen TCP-Client annehmen
   if (_tcpServer && !_tcpClient.connected()) {
     if (_tcpServer->hasClient()) {
       _tcpClient = _tcpServer->accept();
       _tcpBuf    = "";
-      // Resync: alle gespeicherten Display-Werte senden
       for (auto const& p : displayValues)
         _tcpClient.print(p.first + ":" + p.second + "\n");
     }
   }
 
-  // --- TCP Port 81: eingehende Zeilen lesen ---
+  // Eingehende Zeilen lesen
   if (_tcpClient.connected()) {
     while (_tcpClient.available()) {
       char c = _tcpClient.read();
@@ -148,7 +130,6 @@ void CCARemoteWiFi::handle() {
   }
 
 #if defined(ESP8266)
-  // Startinfo 10 s lang alle 2 s wiederholen – Serial Monitor öffnet sich oft erst nach dem Upload
   static unsigned long startTime = millis();
   static unsigned long lastPrint = 0;
   if (wifiEnabled && millis() - startTime < 10000) {
@@ -170,63 +151,10 @@ void CCARemoteWiFi::_tcpDisconnect() {
   _tcpBuf = "";
 }
 
-void CCARemoteWiFi::_updateLastRequest() {
-  _lastRequestMs = millis();
-}
-
 void CCARemoteWiFi::sendInternal(String key, String value) {
   displayValues[key] = value;
   if (_tcpClient.connected())
     _tcpClient.print(key + ":" + value + "\n");
-}
-
-void CCARemoteWiFi::handleStatus() {
-  _updateLastRequest();
-  String json = "{\"type\":\"CCARemote\",\"device\":\"" + deviceName + "\"}";
-  webServer->send(200, "application/json", json);
-}
-
-void CCARemoteWiFi::handleRoot() {
-  _updateLastRequest();
-  String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
-  html += "<title>" + deviceName + "</title></head><body>";
-  html += "<h1>" + deviceName + "</h1>";
-  html += "<p>CCA Remote WiFi laeuft</p>";
-  html += "<p>Verbundene Geraete: " + String(WiFi.softAPgetStationNum()) + "</p>";
-  html += "<p><strong>POST /command</strong> - Body: befehl:wert</p>";
-  html += "<p><strong>GET /display</strong> - JSON mit Display-Werten</p>";
-  html += "</body></html>";
-  webServer->send(200, "text/html", html);
-}
-
-void CCARemoteWiFi::handleCommand() {
-  if (!webServer->hasArg("plain")) {
-    webServer->send(400, "application/json", "{\"error\":\"no body\"}");
-    return;
-  }
-  String body = webServer->arg("plain");
-  // App-seitiger Disconnect – Timeout sofort auslösen
-  if (body == "disconnect:1") {
-    _lastRequestMs = 0;
-    webServer->send(200, "application/json", "{\"status\":\"ok\"}");
-    return;
-  }
-  _updateLastRequest();
-  processCommand(body);
-  webServer->send(200, "application/json", "{\"status\":\"ok\"}");
-}
-
-void CCARemoteWiFi::handleDisplay() {
-  _updateLastRequest();
-  String json = "{";
-  bool first = true;
-  for (auto const& pair : displayValues) {
-    if (!first) json += ",";
-    json += "\"" + pair.first + "\":\"" + pair.second + "\"";
-    first = false;
-  }
-  json += "}";
-  webServer->send(200, "application/json", json);
 }
 
 #endif // !__AVR__
