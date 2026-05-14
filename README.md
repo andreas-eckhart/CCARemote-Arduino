@@ -6,20 +6,24 @@ Dieses Projekt wurde von der HTL Anichstraße (Abteilung Wirtschaftsingenieure �
 Unterstützte Protokolle:
 - **Bluetooth Low Energy (BLE)**
 - **WiFi (WLAN-Hotspot + HTTP)**
-- **MQTT** (in Arbeit)
 
 Unterstützte Hardware:
-- **ESP32** – natives BLE, WiFi, MQTT
-- **ESP8266** - WiFi, MQTT
-- **Arduino Uno / Nano** – BLE über HM-10-Modul (SoftwareSerial)
-- **Raspberry Pi Pico 2W** – natives BLE, WiFi, MQTT (erfordert die [CCARemote-MicroPython](https://github.com/ccaprojects/CCARemote-MicroPython) Bibliothek)
+
+| MCU | Bluetooth | WiFi |
+|---|:---:|:---:|
+| ESP32 | 🟢 | 🟢 |
+| ESP8266 | 🟢 ¹ | 🟢 |
+| Arduino Uno / Nano | 🟢 ¹ | ❌ |
+| Raspberry Pi Pico 2W | 🟢 ² | 🟢 ² |
+
+¹ Externes HM-10 BLE-Modul erforderlich.  
+² Erfordert die [CCARemote-MicroPython](https://github.com/ccaprojects/CCARemote-MicroPython) Bibliothek.
 
 ---
 
 ## Installation
 
-1. Den Ordner `CCARemote-Arduino` als `CCARemote` in den Arduino-Bibliotheksordner kopieren  
-   (`Dokumente/Arduino/libraries/CCARemote`)
+Die Bibliothek ist im Arduino IDE und PlatformIO Bibliothek-Manager unter dem Namen "CCARemote" verfügbar. Die Bibliothk beinhaltet zahlreiche Beispiele.
 
 ---
 
@@ -27,7 +31,7 @@ Unterstützte Hardware:
 
 | Klasse | Protokoll | `#include` | Hardware |
 |---|---|---|---|
-| `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` | ESP32 oder Arduino + HM-10 |
+| `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` | ESP32 oder ESP8266 / Arduino + HM-10 |
 | `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` | ESP32, ESP8266 |
 
 > `CCARemoteBLE` erkennt die Zielplattform **automatisch beim Kompilieren** und wählt die passende Implementierung – der Sketch-Code bleibt auf beiden Plattformen identisch.
@@ -90,7 +94,7 @@ void loop() {
 }
 ```
 
-#### Konstruktor-Parameter (nur Arduino / HM-10)
+#### Konstruktor-Parameter (nur Arduino bzw. ESP8266 mit HM-10)
 
 ```cpp
 CCARemoteBLE remote(name, prefix, rxPin, txPin, baudRate);
@@ -119,7 +123,7 @@ CCARemoteBLE remote(name, prefix, rxPin, txPin, baudRate);
 
 #### Hinweise zum HM-10
 
-- **BLE-Name:** Der Gerätename muss einmalig manuell per AT-Befehl gesetzt werden, da das AT-Kommando je nach Firmware-Variante unterschiedlich interpretiert wird. Den Namen einmalig mit einem Serial-Terminal senden: `AT+NAMEMeinName` (kein Leerzeichen, kein Zeilenumbruch). Der Name bleibt dauerhaft im Flash des Moduls gespeichert.
+- **BLE-Name:** Der Gerätename muss bei einigen Klon-Modellen einmalig manuell per AT-Befehl gesetzt werden, da das AT-Kommando je nach Firmware-Variante unterschiedlich interpretiert wird. Den Namen einmalig mit einem Serial-Terminal senden: `AT+NAMEMeinName` (kein Leerzeichen, kein Zeilenumbruch). Der Name bleibt dauerhaft im Flash des Moduls gespeichert.
 - Bei Auth-Fehler kann das HM-10 die Verbindung nicht aktiv trennen; die App übernimmt das und zeigt die Fehlermeldung an.
 - Gerätenamen werden auf 12 Zeichen begrenzt (HM-10-Firmware-Limit).
 - Getestete Firmware: v5xx. Bei abweichenden Verbindungs-Events (z. B. `AT+CONNECTED` statt `OK+CONN`) ggf. Firmware updaten.
@@ -159,18 +163,26 @@ Die App verbindet sich damit und sendet Befehle über HTTP.
 
 ## Elemente und Typen
 
-| Element | Typ | Richtung | Hinweis |
+### Steuerelemente (App → MCU)
+
+| Element | Methode | Typ | Hinweis |
 |---|---|---|---|
-| Button | `bool` | App → Arduino | `true` = gedrückt |
-| Switch | `bool` | App → Arduino | `true` = ein |
-| Slider | `int` | App → Arduino | Bereich in der App einstellbar (Standard 0–255) |
-| Joystick | `int` | App → Arduino | X und Y als separate Element-IDs |
-| Input | `String` | App → Arduino | Freier Text |
-| Display | `send()` | Arduino → App | Messwert anzeigen |
-| Gauge / Bar | `send()` | Arduino → App | Balken / Kreisbogen |
-| Chart | `send()` | Arduino → App | Liniendiagramm |
-| Status-LED | `send()` | Arduino → App | Ganzzahl 0–3 |
-| Label | `send()` | Arduino → App | Text (optional, nur wenn Element-ID gesetzt) |
+| Button | `receive()` | `bool` | `true` = gedrückt |
+| Switch | `receive()` | `bool` | `true` = ein |
+| Slider | `receive()` | `int` | Bereich in der App einstellbar (Standard 0–255) |
+| Joystick | `receive()` | `int` | X und Y als separate Element-IDs |
+| Input | `receive()` | `String` | Freier Text |
+| Color Picker | `receiveColor()` | `int` | 3 Variablen: `r`, `g`, `b` (je 0–255) |
+
+### Anzeigeelemente (MCU → App)
+
+| Element | Methode | Hinweis |
+|---|---|---|
+| Display | `send()` | Messwert anzeigen |
+| Gauge / Bar | `send()` | Balken / Kreisbogen |
+| Chart | `send()` | Liniendiagramm |
+| Status-LED | `send()` | Ganzzahl 0–3 |
+| Label | `send()` | Text (optional, nur wenn Element-ID gesetzt) |
 
 ---
 
@@ -224,6 +236,29 @@ void loop() {
 > remote.receive("axisX", axisX);  // Joystick X (−255 – +255)
 > remote.receive("axisY", axisY);  // Joystick Y (−255 – +255)
 > ```
+
+---
+
+### `receiveColor()` – RGB-Farbwerte empfangen
+
+Verknüpft ein Color-Picker-Element mit drei `int`-Variablen für Rot, Grün und Blau.
+
+```cpp
+int r = 0, g = 0, b = 0;
+
+void setup() {
+  remote.begin();
+  remote.receiveColor("color1", r, g, b);  // Element-ID aus der App
+}
+
+void loop() {
+  remote.handle();
+
+  analogWrite(PIN_R, r);
+  analogWrite(PIN_G, g);
+  analogWrite(PIN_B, b);
+}
+```
 
 ---
 
@@ -366,6 +401,44 @@ void loop() {
 
 ---
 
+## Color Picker – RGB-LED Beispiel
+
+```cpp
+#include <CCARemoteBLE.h>
+
+CCARemoteBLE remote("MeinName");
+
+// Pins der gemeinsamen Kathode RGB-LED (PWM-fähige Pins)
+const int PIN_R = 25;
+const int PIN_G = 26;
+const int PIN_B = 27;
+
+int r = 0, g = 0, b = 0;
+
+void setup() {
+  pinMode(PIN_R, OUTPUT);
+  pinMode(PIN_G, OUTPUT);
+  pinMode(PIN_B, OUTPUT);
+
+  remote.begin();
+  remote.receiveColor("color1", r, g, b);  // Element-ID aus der App
+}
+
+void loop() {
+  remote.handle();
+
+  if (remote.isConnected()) {
+    analogWrite(PIN_R, r);
+    analogWrite(PIN_G, g);
+    analogWrite(PIN_B, b);
+  }
+}
+```
+
+> **Hinweis:** Bei einer gemeinsamen Anode RGB-LED die Werte invertieren: `analogWrite(PIN_R, 255 - r)` usw.
+
+---
+
 ## Voraussetzungen
 
 ### ESP32
@@ -373,6 +446,14 @@ void loop() {
 - **Board:** ESP32 (beliebiges Modell)
 - **Arduino IDE:** 2.x empfohlen
 - **ESP32-Paket:** Boardverwalter → `esp32` von Espressif
+
+### ESP8266 (optional HM-10 für BLE)
+
+- **Board:** ESP32 (beliebiges Modell)
+- **Arduino IDE:** 2.x empfohlen
+- **ESP8266-Paket:** Boardverwalter → `esp8266` von Community
+- **Bibliothek:** `SoftwareSerial` (im Arduino IDE vorinstalliert)
+- **Modul:** HM-10 BLE-Modul (CC2540 / CC2541 Chip, Firmware v5xx)
 
 ### Arduino Uno / Nano + HM-10
 
