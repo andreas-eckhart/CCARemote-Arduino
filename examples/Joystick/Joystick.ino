@@ -7,13 +7,19 @@
 //  Erfordert die kostenlose CCA Remote App (Android / iOS)
 // ============================================================
 
-// Für BLE Verbindung
-#include <CCARemoteBLE.h>
-CCARemoteBLE remote("MeinName");  // Namen hier anpassen!
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"    // Gerätename (wird als "CCA-MeinName" angezeigt)
+#define CONNECTION   CCA_BLE       // CCA_BLE  oder  CCA_WIFI
+#define PASSWORD     ""            // Passwort (WiFi: min. 8 Zeichen / leer = ohne)
+#define DEBUG_LEVEL  CCA_DEBUG_ALL // CCA_DEBUG_OFF / _IN / _OUT / _ALL
 
-// Für WiFi Verbindung
-// #include <CCARemoteWiFi.h>
-// CCARemoteWiFi remote("MeinName");  // Namen hier anpassen!
+// Optional – nur setzen wenn Standardwert nicht passt:
+// #define DEVICE_PREFIX "XYZ-"   // Standard: "CCA-"
+// #define TCP_PORT      4211     // Standard: 4210  (nur WiFi)
+// #define BAUD_RATE     9600     // Standard: 115200
+// -----------------------------------------------------------
+
+#include <CCARemote.h>
 
 const int PIN_MOTOR_A = 18;  // PWM-Pin Motor A (z.B. Vorwärts / Rückwärts)
 const int PIN_MOTOR_B = 19;  // PWM-Pin Motor B (z.B. Links / Rechts)
@@ -25,8 +31,7 @@ int axisY = 0;  // Joystick Y  (-255 bis +255)
 
 
 void setup() {
-  remote.debug(CCA_DEBUG_ALL, 9600);  // Debug Modus: CCA_DEBUG_IN, CCA_DEBUG_OUT oder CCA_DEBUG_ALL
-  remote.begin();                     // Initialisierung (erforderlich)
+  remote.begin();
 
   // Die Element-IDs aus der App werden nun mit den vorhin definierten Variablen verknüpft
   // remote.receive("Element-ID", variable);

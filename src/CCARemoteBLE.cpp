@@ -71,7 +71,12 @@ public:
   }
 };
 
-CCARemoteBLE::CCARemoteBLE(String name, String prefix) : CCARemote(name, prefix) {
+CCARemoteBLE::CCARemoteBLE(String name, String prefix,
+                           String password, CCADebugMode debugLevel,
+                           unsigned long baudRate)
+  : CCARemote(name, prefix, debugLevel, baudRate)
+{
+  blePassword     = password;
   pServer         = nullptr;
   pControlChar    = nullptr;
   pDisplayChar    = nullptr;
@@ -79,9 +84,8 @@ CCARemoteBLE::CCARemoteBLE(String name, String prefix) : CCARemote(name, prefix)
   authenticated   = false;
 }
 
-void CCARemoteBLE::begin(String blePassword) {
-  this->blePassword = blePassword;
-  if (debugMode == CCA_DEBUG_OFF) Serial.begin(115200);
+void CCARemoteBLE::begin() {
+  Serial.begin(_serialBaudRate);
   Serial.println("\nCCA Remote startet (BLE)...");
   Serial.println("Geraetename: " + deviceName);
 
@@ -116,7 +120,7 @@ void CCARemoteBLE::begin(String blePassword) {
   BLEDevice::startAdvertising();
 
   Serial.println("BLE Server laeuft!");
-  if (!blePassword.length() == 0) {
+  if (blePassword.length() > 0) {
     Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
   }
   Serial.println("Warte auf Verbindung...\n");
@@ -154,11 +158,14 @@ void CCARemoteBLE::sendInternal(String key, String value) {
 
 CCARemoteBLE::CCARemoteBLE(String name, String prefix,
                            uint8_t rxPin, uint8_t txPin,
-                           uint32_t baudRate)
-  : CCARemote(name, prefix),
+                           uint32_t hm10Baud,
+                           String password, CCADebugMode debugLevel,
+                           unsigned long serialBaud)
+  : CCARemote(name, prefix, debugLevel, serialBaud),
     _serial(nullptr),
-    _rxPin(rxPin), _txPin(txPin), _baudRate(baudRate),
+    _rxPin(rxPin), _txPin(txPin), _baudRate(hm10Baud),
     _connected(false), _authenticated(false),
+    _blePassword(password),
     _lastByteTime(0)
 {}
 
@@ -166,9 +173,8 @@ CCARemoteBLE::~CCARemoteBLE() {
   delete _serial;
 }
 
-void CCARemoteBLE::begin(String blePassword) {
-  _blePassword = blePassword;
-  if (debugMode == CCA_DEBUG_OFF) Serial.begin(9600);
+void CCARemoteBLE::begin() {
+  Serial.begin(9600);
   Serial.println("\nCCA Remote startet (BLE/HM-10)...");
   Serial.println("Geraetename: " + deviceName);
 
@@ -196,7 +202,7 @@ void CCARemoteBLE::begin(String blePassword) {
   while (_serial->available()) _serial->read();
 
   Serial.println("HM-10 bereit! (RX=" + String(_rxPin) + ", TX=" + String(_txPin) + ")");
-  if (!blePassword.length() == 0) {
+  if (_blePassword.length() > 0) {
     Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
   }
   Serial.println("Warte auf Verbindung...\n");

@@ -17,7 +17,7 @@
 
 #if !defined(__AVR__)
 
-#include "CCARemote.h"
+#include "CCARemoteBase.h"
 
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>
@@ -27,11 +27,15 @@
 
 class CCARemoteWiFi : public CCARemote {
   public:
-    CCARemoteWiFi(String name, String prefix = "CCA-");
+    CCARemoteWiFi(String name,
+                  String        prefix     = "CCA-",
+                  String        password   = "",
+                  uint16_t      port       = 4210,
+                  CCADebugMode  debugLevel = CCA_DEBUG_OFF,
+                  unsigned long baudRate   = 115200);
     ~CCARemoteWiFi();
 
-    // wifiPassword = "" -> offenes Netzwerk, port = TCP-Port für App-Verbindung
-    void begin(String wifiPassword = "", uint16_t port = 4210);
+    void begin();
     void handle() override;
     bool isConnected() override;
 
@@ -41,6 +45,8 @@ class CCARemoteWiFi : public CCARemote {
   private:
     bool        wifiEnabled;
     bool        _wasConnected;
+    String      _password;
+    uint16_t    _port;
 
     WiFiServer* _tcpServer;
     WiFiClient  _tcpClient;

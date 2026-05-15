@@ -7,7 +7,7 @@
  * MIT – see LICENSE
  */
 
-#include "CCARemote.h"
+#include "CCARemoteBase.h"
 
 // ================================================================
 #if defined(__AVR__)
@@ -15,18 +15,19 @@
 //  AVR (Uno/Nano)
 // ================================================================
 
-CCARemote::CCARemote(String name, String prefix) {
-  deviceName      = prefix + name;
-  commandReceived = false;
-  lastCommand     = "";
-  debugMode       = CCA_DEBUG_OFF;
-  _cmdCount       = 0;
-  _cmdVCount      = 0;
-  _recvCount      = 0;
-  _colorRecvCount = 0;
-  _displayCount   = 0;
-  _pendingResync  = false;
-  _watchdogCount  = 0;
+CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsigned long baudRate) {
+  deviceName       = prefix + name;
+  commandReceived  = false;
+  lastCommand      = "";
+  debugMode        = debugLevel;
+  _serialBaudRate  = baudRate;
+  _cmdCount        = 0;
+  _cmdVCount       = 0;
+  _recvCount       = 0;
+  _colorRecvCount  = 0;
+  _displayCount    = 0;
+  _pendingResync   = false;
+  _watchdogCount   = 0;
 }
 
 void CCARemote::onCommand(String cmd, void (*callback)()) {
@@ -196,11 +197,12 @@ void CCARemote::_checkWatchdogs() {
 //  ESP32 / andere – std::function + std::map
 // ================================================================
 
-CCARemote::CCARemote(String name, String prefix) {
+CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsigned long baudRate) {
   deviceName      = prefix + name;
   commandReceived = false;
   lastCommand     = "";
-  debugMode       = CCA_DEBUG_OFF;
+  debugMode       = debugLevel;
+  _serialBaudRate = baudRate;
   _pendingResync  = false;
 }
 

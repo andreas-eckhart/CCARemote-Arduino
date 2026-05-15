@@ -5,24 +5,28 @@
 //  Erfordert die kostenlose CCA Remote App (Android / iOS)
 // ============================================================
 
-// Für BLE Verbindung
-// #include <CCARemoteBLE.h>
-// CCARemoteBLE remote("MeinName");  // Namen hier anpassen!
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"    // Gerätename (WLAN-SSID: "CCA-MeinName")
+#define CONNECTION   CCA_WIFI      // CCA_BLE  oder  CCA_WIFI
+#define PASSWORD     ""            // WLAN-Passwort (min. 8 Zeichen / leer = offenes Netz)
+#define DEBUG_LEVEL  CCA_DEBUG_ALL // CCA_DEBUG_OFF / _IN / _OUT / _ALL
 
-// Für WiFi Verbindung
-#include <CCARemoteWiFi.h>
-CCARemoteWiFi remote("MeinName");  // Namen hier anpassen!
+// Optional – nur setzen wenn Standardwert nicht passt:
+// #define DEVICE_PREFIX "XYZ-"   // Standard: "CCA-"
+// #define TCP_PORT      4211     // Standard: 4210
+// -----------------------------------------------------------
+
+#include <CCARemote.h>
 
 const int LED_PIN = 18;  // LED Pin
 
 // --- Variablen - speichern von App übermittelte Werte ---
 // --- werden von remote.handle() automatisch aktualisiert ---
-bool switch_led = false;  // true = aktiv; false = inaktiv
+bool switch_led = false;  // true = ein; false = aus
 
 
 void setup() {
-  remote.debug(CCA_DEBUG_ALL, 9600);  // Debug Modus: CCA_DEBUG_IN, CCA_DEBUG_OUT oder CCA_DEBUG_ALL
-  remote.begin("geheim1234"); // WLAN-Hotspot-Passwort festlegen (leer ist offener AP)
+  remote.begin();
 
   // Die Element-IDs aus der App werden nun mit den vorhin definierten Variablen verknüpft
   // remote.receive("Element-ID", variable);

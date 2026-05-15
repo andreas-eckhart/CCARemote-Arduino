@@ -15,21 +15,37 @@
 //           Falls keine Verbindung zustande kommt, Pin 10 und Pin 11 tauschen.
 // ============================================================
 
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"    // Gerätename
+#define PASSWORD     ""            // BLE-AUTH Passwort (leer = ohne)
+#define DEBUG_LEVEL  CCA_DEBUG_ALL // CCA_DEBUG_OFF / _IN / _OUT / _ALL
+
+// Optional – nur setzen wenn Standardwert nicht passt:
+// #define DEVICE_PREFIX "XYZ-"   // Standard: "CCA-"
+#define HM10_RX_PIN  10            // Arduino-Pin → HM-10 TXD (Standard: 10)
+#define HM10_TX_PIN  11            // Arduino-Pin → HM-10 RXD (Standard: 11)
+// #define HM10_BAUD 9600          // Baudrate des HM-10-Moduls (Standard: 9600)
+// -----------------------------------------------------------
+
+#ifndef DEVICE_PREFIX
+  #define DEVICE_PREFIX "CCA-"
+#endif
+#ifndef HM10_BAUD
+  #define HM10_BAUD 9600
+#endif
+
 #include <CCARemoteBLE.h>
-
-// Standard-Pins: RX=10 (→ HM-10 TXD), TX=11 (→ HM-10 RXD)
-CCARemoteBLE remote("MeinName");  // Namen hier anpassen!
-
-// Eigene Pins oder Baudrate:
-// CCARemoteBLE remote("MeinName", "CCA-", 10, 11, 9600);
+CCARemoteBLE remote(DEVICE_NAME, DEVICE_PREFIX,
+                    HM10_RX_PIN, HM10_TX_PIN, HM10_BAUD,
+                    PASSWORD, DEBUG_LEVEL);
 
 const int LED_PIN = 13;  // interne LED am Arduino Uno / Nano
 
 bool button1_val = false;
 bool switch1_val = false;
 
+
 void setup() {
-  remote.debug(CCA_DEBUG_ALL, 9600);
   remote.begin();
 
   remote.receive("button1", button1_val);

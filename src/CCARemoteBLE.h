@@ -14,7 +14,7 @@
 #ifndef CCAREMOTE_BLE_H
 #define CCAREMOTE_BLE_H
 
-#include "CCARemote.h"
+#include "CCARemoteBase.h"
 
 // ================================================================
 #if defined(ESP32)
@@ -29,9 +29,13 @@
 
 class CCARemoteBLE : public CCARemote {
   public:
-    CCARemoteBLE(String name, String prefix = "CCA-");
-    // blePassword = "" -> keine Authentifizierung erforderlich
-    void begin(String blePassword = "");
+    CCARemoteBLE(String name,
+                 String        prefix     = "CCA-",
+                 String        password   = "",
+                 CCADebugMode  debugLevel = CCA_DEBUG_OFF,
+                 unsigned long baudRate   = 115200);
+
+    void begin();
     void handle() override;
     bool isConnected() override;
 
@@ -69,13 +73,17 @@ class CCARemoteBLE : public CCARemote {
     // Hinweis: Manche Klon-Module haben TXD/RXD vertauscht beschriftet.
     //          Falls keine Verbindung zustande kommt, Leitungen tauschen.
     // baudRate – Baudrate des HM-10-Moduls         (Standard: 9600)
-    CCARemoteBLE(String name, String prefix = "CCA-",
-                 uint8_t rxPin = 10, uint8_t txPin = 11,
-                 uint32_t baudRate = 9600);
+    CCARemoteBLE(String name,
+                 String        prefix      = "CCA-",
+                 uint8_t       rxPin       = 10,
+                 uint8_t       txPin       = 11,
+                 uint32_t      hm10Baud    = 9600,
+                 String        password    = "",
+                 CCADebugMode  debugLevel  = CCA_DEBUG_OFF,
+                 unsigned long serialBaud  = 9600);
     ~CCARemoteBLE();
 
-    // blePassword = "" -> keine Authentifizierung erforderlich
-    void begin(String blePassword = "");
+    void begin();
     void handle() override;
     bool isConnected() override;
 

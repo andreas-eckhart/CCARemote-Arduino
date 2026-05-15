@@ -1,148 +1,58 @@
 /*
- * CCARemote.h – Abstract Base Class Declaration
+ * CCARemote.h – Umbrella-Header
  *
- * Platform detection (automatic):
- *   AVR (Uno/Nano) → fixed arrays + function pointers (no std::function/map)
- *   ESP32 / other  → std::function + std::map (full C++ standard library)
+ * Bindet automatisch das richtige Transportprotokoll ein.
+ * Muss NACH den Konfigurations-#defines eingebunden werden!
  *
- * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
- * Extended by A. Eckhart with kind permission of the original authors.
+ * Verwendung im Sketch:
  *
- * MIT – see LICENSE
+ *   #define DEVICE_NAME  "MeinName"    // Gerätename
+ *   #define CONNECTION   CCA_BLE       // CCA_BLE oder CCA_WIFI
+ *   #define PASSWORD     ""            // Passwort (leer = ohne)
+ *   #define DEBUG_LEVEL  CCA_DEBUG_ALL // Debugging
+ *   #include <CCARemote.h>
+ *
+ * Developed by A. Eckhart (HTL Anichstraße) - MIT – see LICENSE
  */
 
-#ifndef CCAREMOTE_H
-#define CCAREMOTE_H
+#pragma once
 
-// Version der Bibliothek
-#define CCAREMOTE_VERSION "1.1.0"
+#define CCA_BLE  1
+#define CCA_WIFI 2
 
-#include <Arduino.h>
-
-// Debug-Modus Flags
-enum CCADebugMode {
-  CCA_DEBUG_OFF = 0,
-  CCA_DEBUG_IN  = 1,
-  CCA_DEBUG_OUT = 2,
-  CCA_DEBUG_ALL = 3
-};
-
-// ================================================================
-#if defined(__AVR__)
-// ================================================================
-//  AVR (Uno/Nano) – kein std::function, keine std::map
-//  Maximale Anzahl registrierbarer Callbacks / Variablen
-// ================================================================
-#ifndef CCA_MAX_CALLBACKS
-  #define CCA_MAX_CALLBACKS 8
+// Standardwerte für optionale Defines
+#ifndef DEVICE_PREFIX
+  #define DEVICE_PREFIX "CCA-"
 #endif
-#ifndef CCA_MAX_RECEIVERS
-  #define CCA_MAX_RECEIVERS 8
+#ifndef TCP_PORT
+  #define TCP_PORT 4210
 #endif
-#ifndef CCA_MAX_DISPLAY
-  #define CCA_MAX_DISPLAY 8
+#ifndef DEBUG_LEVEL
+  #define DEBUG_LEVEL CCA_DEBUG_OFF
 #endif
-#ifndef CCA_MAX_COLOR
-  #define CCA_MAX_COLOR 4
+#ifndef PASSWORD
+  #define PASSWORD ""
+#endif
+#ifndef BAUD_RATE
+  #define BAUD_RATE 115200
 #endif
 
-struct _CCACmd  { String key; void (*fn)(); };
-struct _CCACmdV { String key; void (*fn)(String); };
+// Pflicht-Defines prüfen
+#if !defined(DEVICE_NAME)
+  #error "CCARemote: DEVICE_NAME nicht definiert! Beispiel: #define DEVICE_NAME \"MeinName\""
+#endif
+#if !defined(CONNECTION)
+  #error "CCARemote: CONNECTION nicht definiert! Beispiel: #define CONNECTION CCA_BLE"
+#endif
+#if (CONNECTION != CCA_BLE) && (CONNECTION != CCA_WIFI)
+  #error "CCARemote: Ungueltige CONNECTION – nur CCA_BLE oder CCA_WIFI erlaubt!"
+#endif
 
-struct _CCARecv {
-  String key;
-  enum Type : uint8_t { INT_T, BOOL_T, FLOAT_T, STRING_T } type;
-  void* ptr;
-};
-
-struct _CCAColorRecv { String key; int* r; int* g; int* b; };
-
-struct _CCADisplay  { String key; String value; };
-struct _CCAWatchdog { String key; unsigned long timeoutMs; unsigned long lastMs; };
-
-// ================================================================
+// Transport einbinden und remote-Objekt anlegen
+#if (CONNECTION == CCA_WIFI)
+  #include "CCARemoteWiFi.h"
+  CCARemoteWiFi remote(DEVICE_NAME, DEVICE_PREFIX, PASSWORD, TCP_PORT, DEBUG_LEVEL, BAUD_RATE);
 #else
-// ================================================================
-//  ESP32 / andere – volle C++ Standardbibliothek
-// ================================================================
-#include <functional>
-#include <map>
-
-#endif // __AVR__
-
-// ================================================================
-//  Gemeinsame Basisklasse
-// ================================================================
-class CCARemote {
-  public:
-    CCARemote(String name, String prefix = "CCA-");
-    virtual ~CCARemote() {}
-
-    virtual void handle()      = 0;
-    virtual bool isConnected() = 0;
-
-#if defined(__AVR__)
-    void onCommand(String cmd, void (*callback)());
-    void onCommand(String cmd, void (*callback)(String));
-#else
-    void onCommand(String cmd, std::function<void()> callback);
-    void onCommand(String cmd, std::function<void(String)> callback);
+  #include "CCARemoteBLE.h"
+  CCARemoteBLE  remote(DEVICE_NAME, DEVICE_PREFIX, PASSWORD, DEBUG_LEVEL, BAUD_RATE);
 #endif
-
-    void receive(String cmd, int&    var);
-    void receive(String cmd, bool&   var);
-    void receive(String cmd, float&  var);
-    void receive(String cmd, String& var);
-    void receiveColor(String cmd, int& r, int& g, int& b);
-    void watchdog(String cmd, unsigned long timeoutMs);
-
-    void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
-
-    void send(String message);
-    void send(String key, String value);
-    void send(String key, int value);
-    void send(String key, float value);
-    void send(String key, float value, int decimals);
-
-  protected:
-    String       deviceName;
-    String       lastCommand;
-    bool         commandReceived;
-    CCADebugMode debugMode;
-
-    void processCommand(String cmd);
-    void _resyncDisplay();
-    void _sendIfChanged(String key, String value);
-    void _checkWatchdogs();
-    bool _pendingResync;
-    virtual void sendInternal(String key, String value) = 0;
-
-    // Display-Werte: auf AVR fixes Array, sonst std::map
-#if defined(__AVR__)
-    _CCADisplay _display[CCA_MAX_DISPLAY];
-    uint8_t     _displayCount;
-#else
-    std::map<String, String> displayValues;
-#endif
-
-  private:
-#if defined(__AVR__)
-    _CCACmd       _cmds[CCA_MAX_CALLBACKS];
-    _CCACmdV      _cmdsV[CCA_MAX_CALLBACKS];
-    uint8_t       _cmdCount;
-    uint8_t       _cmdVCount;
-    _CCARecv      _recv[CCA_MAX_RECEIVERS];
-    uint8_t       _recvCount;
-    _CCAColorRecv _colorRecv[CCA_MAX_COLOR];
-    uint8_t       _colorRecvCount;
-    _CCAWatchdog  _watchdogList[CCA_MAX_RECEIVERS];
-    uint8_t       _watchdogCount;
-#else
-    std::map<String, std::function<void()>>       commands;
-    std::map<String, std::function<void(String)>> commandsWithValue;
-    std::map<String, unsigned long>               _watchdogTimeouts;
-    std::map<String, unsigned long>               _watchdogLast;
-#endif
-};
-
-#endif // CCAREMOTE_H

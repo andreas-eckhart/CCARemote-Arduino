@@ -16,7 +16,13 @@
 
 #if !defined(__AVR__)
 
-CCARemoteWiFi::CCARemoteWiFi(String name, String prefix) : CCARemote(name, prefix) {
+CCARemoteWiFi::CCARemoteWiFi(String name, String prefix,
+                              String password, uint16_t port,
+                              CCADebugMode debugLevel, unsigned long baudRate)
+  : CCARemote(name, prefix, debugLevel, baudRate)
+{
+  _password     = password;
+  _port         = port;
   wifiEnabled   = false;
   _wasConnected = false;
   _tcpServer    = nullptr;
@@ -30,13 +36,11 @@ CCARemoteWiFi::~CCARemoteWiFi() {
   }
 }
 
-void CCARemoteWiFi::begin(String wifiPassword, uint16_t port) {
-  if (debugMode == CCA_DEBUG_OFF) {
-    Serial.begin(115200);
+void CCARemoteWiFi::begin() {
+  Serial.begin(_serialBaudRate);
 #if defined(ESP8266)
-    delay(3000);
+  if (debugMode != CCA_DEBUG_OFF) delay(3000);
 #endif
-  }
   Serial.println("\nCCA Remote startet (WiFi)...");
   Serial.println("Geraetename: " + deviceName);
 
@@ -48,7 +52,7 @@ void CCARemoteWiFi::begin(String wifiPassword, uint16_t port) {
   delay(100);
 #endif
 
-  if (wifiPassword.length() > 0 && wifiPassword.length() < 8) {
+  if (_password.length() > 0 && _password.length() < 8) {
     while (true) {
       Serial.println("[CCA] FEHLER: WiFi-Passwort muss mindestens 8 Zeichen lang sein!");
       delay(2000);
@@ -56,10 +60,10 @@ void CCARemoteWiFi::begin(String wifiPassword, uint16_t port) {
   }
 
   bool success;
-  if (wifiPassword.length() == 0) {
+  if (_password.length() == 0) {
     success = WiFi.softAP(deviceName.c_str());
   } else {
-    success = WiFi.softAP(deviceName.c_str(), wifiPassword.c_str());
+    success = WiFi.softAP(deviceName.c_str(), _password.c_str());
   }
 
 #if defined(ESP8266)
@@ -78,14 +82,14 @@ void CCARemoteWiFi::begin(String wifiPassword, uint16_t port) {
   Serial.println(deviceName);
   Serial.print("IP-Adresse: ");
   Serial.println(WiFi.softAPIP());
-  if (wifiPassword.length() > 0) {
+  if (_password.length() > 0) {
     Serial.print("Passwort: ");
-    Serial.println(wifiPassword);
+    Serial.println(_password);
   }
 
-  _tcpServer = new WiFiServer(port);
+  _tcpServer = new WiFiServer(_port);
   _tcpServer->begin();
-  Serial.println("TCP Server laeuft auf Port " + String(port));
+  Serial.println("TCP Server laeuft auf Port " + String(_port));
   Serial.println("CCA Remote bereit!\n");
 }
 

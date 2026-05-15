@@ -12,7 +12,7 @@
 
 #if !defined(__AVR__)
 
-#include "CCARemote.h"
+#include "CCARemoteBase.h"
 
 // CCARemoteMQTT erfordert die Bibliothek "PubSubClient" (Bibliotheks-Manager).
 // Falls PubSubClient nicht installiert ist, wird diese Klasse uebersprungen.
