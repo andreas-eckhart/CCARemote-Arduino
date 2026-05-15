@@ -5,7 +5,7 @@ Dieses Projekt wurde von der HTL Anichstraße (Abteilung Wirtschaftsingenieure �
 
 Unterstützte Protokolle:
 - **Bluetooth Low Energy (BLE)**
-- **WiFi (WLAN-Hotspot + HTTP)**
+- **WiFi (WLAN-Hotspot + TCP)**
 
 Unterstützte Hardware:
 
@@ -32,7 +32,7 @@ Die Bibliothek ist im Arduino IDE und PlatformIO Bibliothek-Manager unter dem Na
 | Klasse | Protokoll | `#include` | Hardware |
 |---|---|---|---|
 | `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` | ESP32 oder ESP8266 / Arduino + HM-10 |
-| `CCARemoteWiFi` | WiFi Hotspot (HTTP) | `#include <CCARemoteWiFi.h>` | ESP32, ESP8266 |
+| `CCARemoteWiFi` | WiFi Hotspot (TCP)  | `#include <CCARemoteWiFi.h>` | ESP32, ESP8266 |
 
 > `CCARemoteBLE` erkennt die Zielplattform **automatisch beim Kompilieren** und wählt die passende Implementierung – der Sketch-Code bleibt auf beiden Plattformen identisch.
 
@@ -153,9 +153,20 @@ void loop() {
 ```
 
 ESP32 und ESP8266 erstellen einen WLAN-Hotspot mit dem Namen `CCA-MeinName`.  
-Die App verbindet sich damit und sendet Befehle über HTTP.
+Die App verbindet sich damit und kommuniziert über eine persistente TCP-Verbindung.
 
-**`begin(wifiPassword)`** – Passwort weglassen oder leer lassen für ein offenes Netzwerk.
+**`begin(wifiPassword, port)`**
+
+| Parameter | Typ | Standard | Beschreibung |
+|---|---|---|---|
+| `wifiPassword` | `String` | `""` | WLAN-Passwort (leer = offenes Netzwerk, sonst WPA2) |
+| `port` | `uint16_t` | `4210` | TCP-Port für die App-Verbindung |
+
+```cpp
+remote.begin();                      // offenes Netzwerk, Port 4210
+remote.begin("geheim1234");          // WPA2, Port 4210
+remote.begin("geheim1234", 5000);    // WPA2, abweichender Port
+```
 
 > **Hinweis Passwortlänge:** WPA2 erfordert mindestens **8 Zeichen**. Ein kürzeres Passwort führt dazu, dass der Hotspot nicht gestartet wird. Die Library gibt in diesem Fall eine Fehlermeldung im Seriellen Monitor aus.
 
@@ -193,7 +204,7 @@ Die App verbindet sich damit und sendet Befehle über HTTP.
 | Klasse | Aufruf |
 |---|---|
 | `CCARemoteBLE` | `remote.begin()` oder `remote.begin("passwort")` |
-| `CCARemoteWiFi` | `remote.begin()` oder `remote.begin("passwort")` |
+| `CCARemoteWiFi` | `remote.begin()`, `remote.begin("passwort")` oder `remote.begin("passwort", port)` |
 
 ---
 

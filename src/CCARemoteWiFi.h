@@ -30,8 +30,8 @@ class CCARemoteWiFi : public CCARemote {
     CCARemoteWiFi(String name, String prefix = "CCA-");
     ~CCARemoteWiFi();
 
-    // wifiPassword = "" -> offenes Netzwerk
-    void begin(String wifiPassword = "");
+    // wifiPassword = "" -> offenes Netzwerk, port = TCP-Port für App-Verbindung
+    void begin(String wifiPassword = "", uint16_t port = 4210);
     void handle() override;
     bool isConnected() override;
 

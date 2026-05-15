@@ -30,7 +30,7 @@ CCARemoteWiFi::~CCARemoteWiFi() {
   }
 }
 
-void CCARemoteWiFi::begin(String wifiPassword) {
+void CCARemoteWiFi::begin(String wifiPassword, uint16_t port) {
   if (debugMode == CCA_DEBUG_OFF) {
     Serial.begin(115200);
 #if defined(ESP8266)
@@ -83,9 +83,9 @@ void CCARemoteWiFi::begin(String wifiPassword) {
     Serial.println(wifiPassword);
   }
 
-  _tcpServer = new WiFiServer(81);
+  _tcpServer = new WiFiServer(port);
   _tcpServer->begin();
-  Serial.println("TCP Server laeuft auf Port 81");
+  Serial.println("TCP Server laeuft auf Port " + String(port));
   Serial.println("CCA Remote bereit!\n");
 }
 
