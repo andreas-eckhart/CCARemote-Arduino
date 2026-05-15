@@ -123,6 +123,7 @@ void CCARemoteBLE::begin(String blePassword) {
 }
 
 void CCARemoteBLE::handle() {
+  _checkWatchdogs();
   if (_pendingResync && deviceConnected && authenticated) {
     _pendingResync = false;
     _resyncDisplay();
@@ -202,6 +203,7 @@ void CCARemoteBLE::begin(String blePassword) {
 }
 
 void CCARemoteBLE::handle() {
+  _checkWatchdogs();
   if (_pendingResync && _connected && _authenticated) {
     _pendingResync = false;
     _resyncDisplay();

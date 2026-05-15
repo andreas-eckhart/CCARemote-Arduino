@@ -369,6 +369,30 @@ if (remote.isConnected()) {
 
 ---
 
+### `watchdog()` – Automatischer Nullwert bei Verbindungsverlust
+
+Setzt eine Variable automatisch auf `0` zurück wenn sie länger als das angegebene Timeout nicht aktualisiert wurde. Typischer Anwendungsfall: Joystick-Achsen bei RC-Fahrzeugen oder Robotern, damit das Gerät bei Verbindungsverlust zuverlässig stoppt.
+
+```cpp
+void setup() {
+  remote.begin();
+
+  remote.receive("axisX", axisX);
+  remote.receive("axisY", axisY);
+  remote.watchdog("axisX", 500);  // axisX → 0 wenn 500 ms kein Update
+  remote.watchdog("axisY", 500);  // axisY → 0 wenn 500 ms kein Update
+}
+```
+
+| Parameter | Typ | Beschreibung |
+|---|---|---|
+| `cmd` | `String` | Element-ID — muss mit `receive()` registriert sein |
+| `timeoutMs` | `unsigned long` | Timeout in Millisekunden |
+
+> **Hinweis:** `watchdog()` muss nach `receive()` aufgerufen werden. Der Watchdog wird in `handle()` geprüft — `handle()` muss also regelmäßig in `loop()` aufgerufen werden.
+
+---
+
 ## Vollständiges Beispiel (BLE)
 
 ```cpp

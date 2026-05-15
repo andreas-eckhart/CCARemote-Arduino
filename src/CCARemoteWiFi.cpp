@@ -90,6 +90,7 @@ void CCARemoteWiFi::begin(String wifiPassword, uint16_t port) {
 }
 
 void CCARemoteWiFi::handle() {
+  _checkWatchdogs();
   if (!wifiEnabled) return;
 
   // Neuen TCP-Client annehmen

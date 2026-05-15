@@ -57,7 +57,8 @@ struct _CCARecv {
 
 struct _CCAColorRecv { String key; int* r; int* g; int* b; };
 
-struct _CCADisplay { String key; String value; };
+struct _CCADisplay  { String key; String value; };
+struct _CCAWatchdog { String key; unsigned long timeoutMs; unsigned long lastMs; };
 
 // ================================================================
 #else
@@ -93,6 +94,7 @@ class CCARemote {
     void receive(String cmd, float&  var);
     void receive(String cmd, String& var);
     void receiveColor(String cmd, int& r, int& g, int& b);
+    void watchdog(String cmd, unsigned long timeoutMs);
 
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
 
@@ -111,6 +113,7 @@ class CCARemote {
     void processCommand(String cmd);
     void _resyncDisplay();
     void _sendIfChanged(String key, String value);
+    void _checkWatchdogs();
     bool _pendingResync;
     virtual void sendInternal(String key, String value) = 0;
 
@@ -124,17 +127,21 @@ class CCARemote {
 
   private:
 #if defined(__AVR__)
-    _CCACmd      _cmds[CCA_MAX_CALLBACKS];
-    _CCACmdV     _cmdsV[CCA_MAX_CALLBACKS];
-    uint8_t      _cmdCount;
-    uint8_t      _cmdVCount;
-    _CCARecv     _recv[CCA_MAX_RECEIVERS];
-    uint8_t      _recvCount;
+    _CCACmd       _cmds[CCA_MAX_CALLBACKS];
+    _CCACmdV      _cmdsV[CCA_MAX_CALLBACKS];
+    uint8_t       _cmdCount;
+    uint8_t       _cmdVCount;
+    _CCARecv      _recv[CCA_MAX_RECEIVERS];
+    uint8_t       _recvCount;
     _CCAColorRecv _colorRecv[CCA_MAX_COLOR];
     uint8_t       _colorRecvCount;
+    _CCAWatchdog  _watchdogList[CCA_MAX_RECEIVERS];
+    uint8_t       _watchdogCount;
 #else
     std::map<String, std::function<void()>>       commands;
     std::map<String, std::function<void(String)>> commandsWithValue;
+    std::map<String, unsigned long>               _watchdogTimeouts;
+    std::map<String, unsigned long>               _watchdogLast;
 #endif
 };
 

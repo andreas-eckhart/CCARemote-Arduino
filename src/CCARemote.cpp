@@ -26,6 +26,7 @@ CCARemote::CCARemote(String name, String prefix) {
   _colorRecvCount = 0;
   _displayCount   = 0;
   _pendingResync  = false;
+  _watchdogCount  = 0;
 }
 
 void CCARemote::onCommand(String cmd, void (*callback)()) {
@@ -141,7 +142,13 @@ void CCARemote::processCommand(String cmd) {
             }
           }
         }
-        if (!found) Serial.println("Unbekannter Befehl: " + key);
+        if (found) {
+          for (uint8_t w = 0; w < _watchdogCount; w++) {
+            if (_watchdogList[w].key == key) { _watchdogList[w].lastMs = millis(); break; }
+          }
+        } else {
+          Serial.println("Unbekannter Befehl: " + key);
+        }
       } else {
         bool found = false;
         for (uint8_t i = 0; i < _cmdCount; i++) {
@@ -159,6 +166,27 @@ void CCARemote::processCommand(String cmd) {
 
     if (commaPos < 0) break;
     start = commaPos + 1;
+  }
+}
+
+void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
+  for (uint8_t i = 0; i < _watchdogCount; i++) {
+    if (_watchdogList[i].key == cmd) { _watchdogList[i].timeoutMs = timeoutMs; _watchdogList[i].lastMs = millis(); return; }
+  }
+  if (_watchdogCount < CCA_MAX_RECEIVERS) {
+    _watchdogList[_watchdogCount].key       = cmd;
+    _watchdogList[_watchdogCount].timeoutMs = timeoutMs;
+    _watchdogList[_watchdogCount].lastMs    = millis();
+    _watchdogCount++;
+  }
+}
+void CCARemote::_checkWatchdogs() {
+  unsigned long now = millis();
+  for (uint8_t i = 0; i < _watchdogCount; i++) {
+    if (now - _watchdogList[i].lastMs >= _watchdogList[i].timeoutMs) {
+      _watchdogList[i].lastMs = now;
+      processCommand(_watchdogList[i].key + ":0");
+    }
   }
 }
 
@@ -247,6 +275,7 @@ void CCARemote::processCommand(String cmd) {
         String value   = part.substring(colonPos + 1);
         if (commandsWithValue.count(command) > 0) {
           commandsWithValue[command](value);
+          if (_watchdogLast.count(command)) _watchdogLast[command] = millis();
         } else {
           Serial.println("Unbekannter Befehl: " + command);
         }
@@ -254,6 +283,7 @@ void CCARemote::processCommand(String cmd) {
         if (commands.count(part) > 0) {
           if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + part + " (kein Wert)");
           commands[part]();
+          if (_watchdogLast.count(part)) _watchdogLast[part] = millis();
         } else {
           Serial.println("Unbekannter Befehl: " + part);
         }
@@ -262,6 +292,20 @@ void CCARemote::processCommand(String cmd) {
 
     if (commaPos < 0) break;
     start = commaPos + 1;
+  }
+}
+
+void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
+  _watchdogTimeouts[cmd] = timeoutMs;
+  _watchdogLast[cmd]     = millis();
+}
+void CCARemote::_checkWatchdogs() {
+  unsigned long now = millis();
+  for (auto& kv : _watchdogTimeouts) {
+    if (now - _watchdogLast[kv.first] >= kv.second) {
+      _watchdogLast[kv.first] = now;
+      processCommand(kv.first + ":0");
+    }
   }
 }
 
