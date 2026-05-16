@@ -48,11 +48,26 @@
   #error "CCARemote: Ungueltige CONNECTION – nur CCA_BLE oder CCA_WIFI erlaubt!"
 #endif
 
+// Standardwerte für HM-10 Pins (nur Arduino Uno/Nano)
+#ifndef HM10_RX_PIN
+  #define HM10_RX_PIN 10
+#endif
+#ifndef HM10_TX_PIN
+  #define HM10_TX_PIN 11
+#endif
+#ifndef HM10_BAUD
+  #define HM10_BAUD 9600
+#endif
+
 // Transport einbinden und remote-Objekt anlegen
 #if (CONNECTION == CCA_WIFI)
   #include "CCARemoteWiFi.h"
   CCARemoteWiFi remote(DEVICE_NAME, DEVICE_PREFIX, PASSWORD, TCP_PORT, DEBUG_LEVEL, BAUD_RATE);
-#else
+#elif defined(ESP32)
   #include "CCARemoteBLE.h"
   CCARemoteBLE  remote(DEVICE_NAME, DEVICE_PREFIX, PASSWORD, DEBUG_LEVEL, BAUD_RATE);
+#else
+  // Arduino Uno / Nano – HM-10 BLE-Modul über SoftwareSerial
+  #include "CCARemoteBLE.h"
+  CCARemoteBLE  remote(DEVICE_NAME, DEVICE_PREFIX, HM10_RX_PIN, HM10_TX_PIN, HM10_BAUD, PASSWORD, DEBUG_LEVEL, BAUD_RATE);
 #endif

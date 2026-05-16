@@ -98,10 +98,12 @@ class CCARemoteBLE : public CCARemote {
     bool            _connected;
     bool            _authenticated;
     String          _blePassword;
-    String          _rxBuffer;
+    char            _rxBuf[128];
+    uint8_t         _rxBufLen;
     unsigned long   _lastByteTime;
 
-    void _processRx(String data);
+    void _dispatchRx();
+    void _processRx(const char* raw);
     void _sendRaw(String msg);
 };
 

@@ -33,49 +33,49 @@ CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsign
 void CCARemote::onCommand(String cmd, void (*callback)()) {
   if (_cmdCount < CCA_MAX_CALLBACKS) {
     _cmds[_cmdCount++] = { cmd, callback };
-    Serial.println("Befehl registriert: " + cmd);
+    Serial.print(F("Befehl registriert: ")); Serial.println(cmd);
   }
 }
 
 void CCARemote::onCommand(String cmd, void (*callback)(String)) {
   if (_cmdVCount < CCA_MAX_CALLBACKS) {
     _cmdsV[_cmdVCount++] = { cmd, callback };
-    Serial.println("Befehl registriert: " + cmd + " (mit Wert)");
+    Serial.print(F("Befehl registriert: ")); Serial.print(cmd); Serial.println(F(" (mit Wert)"));
   }
 }
 
 void CCARemote::receive(String cmd, int& var) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
     _recv[_recvCount++] = { cmd, _CCARecv::INT_T, &var };
-    Serial.println("Variable gebunden: " + cmd + " (int)");
+    Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (int)"));
   }
 }
 
 void CCARemote::receive(String cmd, bool& var) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
     _recv[_recvCount++] = { cmd, _CCARecv::BOOL_T, &var };
-    Serial.println("Variable gebunden: " + cmd + " (bool)");
+    Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (bool)"));
   }
 }
 
 void CCARemote::receive(String cmd, float& var) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
     _recv[_recvCount++] = { cmd, _CCARecv::FLOAT_T, &var };
-    Serial.println("Variable gebunden: " + cmd + " (float)");
+    Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (float)"));
   }
 }
 
 void CCARemote::receive(String cmd, String& var) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
     _recv[_recvCount++] = { cmd, _CCARecv::STRING_T, &var };
-    Serial.println("Variable gebunden: " + cmd + " (String)");
+    Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (String)"));
   }
 }
 
 void CCARemote::receiveColor(String cmd, int& r, int& g, int& b) {
   if (_colorRecvCount < CCA_MAX_COLOR) {
     _colorRecv[_colorRecvCount++] = { cmd, &r, &g, &b };
-    Serial.println("Farbe gebunden: " + cmd + " (r,g,b)");
+    Serial.print(F("Farbe gebunden: ")); Serial.print(cmd); Serial.println(F(" (r,g,b)"));
   }
 }
 
@@ -103,9 +103,12 @@ void CCARemote::processCommand(String cmd) {
               *_colorRecv[i].g = value.substring(s1 + 1, s2).toInt();
               *_colorRecv[i].b = value.substring(s2 + 1).toInt();
             }
-            if (debugMode & CCA_DEBUG_IN)
-              Serial.println("[CCA] IN  " + key + " = R:" + *_colorRecv[i].r +
-                             " G:" + *_colorRecv[i].g + " B:" + *_colorRecv[i].b);
+            if (debugMode & CCA_DEBUG_IN) {
+              Serial.print(F("[CCA] IN  ")); Serial.print(key);
+              Serial.print(F(" = R:")); Serial.print(*_colorRecv[i].r);
+              Serial.print(F(" G:"));   Serial.print(*_colorRecv[i].g);
+              Serial.print(F(" B:"));   Serial.println(*_colorRecv[i].b);
+            }
             found = true;
             break;
           }
@@ -114,8 +117,10 @@ void CCARemote::processCommand(String cmd) {
         if (!found) {
           for (uint8_t i = 0; i < _recvCount; i++) {
             if (_recv[i].key == key) {
-              if (debugMode & CCA_DEBUG_IN)
-                Serial.println("[CCA] IN  " + key + " = " + value);
+              if (debugMode & CCA_DEBUG_IN) {
+                Serial.print(F("[CCA] IN  ")); Serial.print(key);
+                Serial.print(F(" = "));        Serial.println(value);
+              }
               switch (_recv[i].type) {
                 case _CCARecv::INT_T:
                   *((int*)_recv[i].ptr) = value.toInt(); break;
@@ -135,8 +140,10 @@ void CCARemote::processCommand(String cmd) {
         if (!found) {
           for (uint8_t i = 0; i < _cmdVCount; i++) {
             if (_cmdsV[i].key == key) {
-              if (debugMode & CCA_DEBUG_IN)
-                Serial.println("[CCA] IN  " + key + " = " + value);
+              if (debugMode & CCA_DEBUG_IN) {
+                Serial.print(F("[CCA] IN  ")); Serial.print(key);
+                Serial.print(F(" = "));        Serial.println(value);
+              }
               _cmdsV[i].fn(value);
               found = true;
               break;
@@ -148,20 +155,21 @@ void CCARemote::processCommand(String cmd) {
             if (_watchdogList[w].key == key) { _watchdogList[w].lastMs = millis(); break; }
           }
         } else {
-          Serial.println("Unbekannter Befehl: " + key);
+          Serial.print(F("Unbekannter Befehl: ")); Serial.println(key);
         }
       } else {
         bool found = false;
         for (uint8_t i = 0; i < _cmdCount; i++) {
           if (_cmds[i].key == part) {
-            if (debugMode & CCA_DEBUG_IN)
-              Serial.println("[CCA] IN  " + part + " (kein Wert)");
+            if (debugMode & CCA_DEBUG_IN) {
+              Serial.print(F("[CCA] IN  ")); Serial.print(part); Serial.println(F(" (kein Wert)"));
+            }
             _cmds[i].fn();
             found = true;
             break;
           }
         }
-        if (!found) Serial.println("Unbekannter Befehl: " + part);
+        if (!found) { Serial.print(F("Unbekannter Befehl: ")); Serial.println(part); }
       }
     }
 
@@ -344,14 +352,31 @@ void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
 }
 
 void CCARemote::_sendIfChanged(String key, String value) {
-#if !defined(__AVR__)
+#if defined(__AVR__)
+  bool found = false;
+  for (uint8_t i = 0; i < _displayCount; i++) {
+    if (_display[i].key == key) {
+      if (_display[i].value == value) return;
+      _display[i].value = value;
+      found = true;
+      break;
+    }
+  }
+  if (!found && _displayCount < CCA_MAX_DISPLAY) {
+    _display[_displayCount].key   = key;
+    _display[_displayCount].value = value;
+    _displayCount++;
+  }
+#else
   auto it = displayValues.find(key);
   if (it != displayValues.end() && it->second == value) return;
   displayValues[key] = value;
 #endif
   if (debugMode & CCA_DEBUG_OUT) {
-    if (value.length() > 0) Serial.println("[CCA] OUT " + key + " = " + value);
-    else                     Serial.println("[CCA] OUT " + key);
+    Serial.print(F("[CCA] OUT "));
+    Serial.print(key);
+    if (value.length() > 0) { Serial.print(F(" = ")); Serial.println(value); }
+    else                       Serial.println();
   }
   sendInternal(key, value);
 }

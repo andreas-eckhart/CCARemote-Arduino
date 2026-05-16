@@ -47,6 +47,7 @@ public:
   ControlCallbacks(CCARemoteBLE* p) : parent(p) {}
   void onWrite(BLECharacteristic* pChar) override {
     String value = pChar->getValue().c_str();
+    value.trim();
     if (value.length() == 0) return;
 
     if (!parent->blePassword.length() == 0 && !parent->authenticated) {
@@ -54,11 +55,11 @@ public:
         parent->authenticated  = true;
         parent->_pendingResync = true;
         Serial.println("BLE Authentifizierung erfolgreich!");
-        parent->pDisplayChar->setValue("AUTH:OK");
+        parent->pDisplayChar->setValue("AUTH:OK\n");
         parent->pDisplayChar->notify();
       } else {
         Serial.println("BLE Authentifizierung fehlgeschlagen! Verbindung wird getrennt.");
-        parent->pDisplayChar->setValue("AUTH:FAIL");
+        parent->pDisplayChar->setValue("AUTH:FAIL\n");
         parent->pDisplayChar->notify();
         delay(50);
         parent->pServer->disconnect(parent->pServer->getConnId());
@@ -144,7 +145,7 @@ bool CCARemoteBLE::isConnected() {
 
 void CCARemoteBLE::sendInternal(String key, String value) {
   if (deviceConnected && authenticated && pDisplayChar != nullptr) {
-    String msg = key + ":" + value;
+    String msg = key + ":" + value + "\n";
     pDisplayChar->setValue(msg.c_str());
     pDisplayChar->notify();
   }
@@ -166,17 +167,21 @@ CCARemoteBLE::CCARemoteBLE(String name, String prefix,
     _rxPin(rxPin), _txPin(txPin), _baudRate(hm10Baud),
     _connected(false), _authenticated(false),
     _blePassword(password),
+    _rxBufLen(0),
     _lastByteTime(0)
-{}
+{
+  _rxBuf[0] = '\0';
+}
 
 CCARemoteBLE::~CCARemoteBLE() {
   delete _serial;
 }
 
 void CCARemoteBLE::begin() {
-  Serial.begin(9600);
-  Serial.println("\nCCA Remote startet (BLE/HM-10)...");
-  Serial.println("Geraetename: " + deviceName);
+  Serial.begin(_serialBaudRate);
+  Serial.println(F("\nCCA Remote startet (BLE/HM-10)..."));
+  Serial.print(F("Geraetename: "));
+  Serial.println(deviceName);
 
   _serial = new SoftwareSerial(_rxPin, _txPin);
   _serial->begin(_baudRate);
@@ -201,11 +206,15 @@ void CCARemoteBLE::begin() {
   // Puffer nach Reset leeren
   while (_serial->available()) _serial->read();
 
-  Serial.println("HM-10 bereit! (RX=" + String(_rxPin) + ", TX=" + String(_txPin) + ")");
+  Serial.print(F("HM-10 bereit! (RX="));
+  Serial.print(_rxPin);
+  Serial.print(F(", TX="));
+  Serial.print(_txPin);
+  Serial.println(')');
   if (_blePassword.length() > 0) {
-    Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
+    Serial.println(F("Passwort aktiv: AUTH-Befehl erforderlich."));
   }
-  Serial.println("Warte auf Verbindung...\n");
+  Serial.println(F("Warte auf Verbindung...\n"));
 }
 
 void CCARemoteBLE::handle() {
@@ -215,20 +224,28 @@ void CCARemoteBLE::handle() {
     _resyncDisplay();
   }
 
-  // Alle verfuegbaren Bytes einlesen
+  // Bytes lesen – bei \n sofort verarbeiten, sonst in statischem Puffer sammeln
   while (_serial->available()) {
-    _rxBuffer += (char)_serial->read();
-    _lastByteTime = millis();
+    char c = (char)_serial->read();
+
+    if (c == '\n') {
+      if (_rxBufLen > 0) {
+        _lastByteTime = 0;
+        _dispatchRx();
+      }
+    } else if ((uint8_t)c >= 0x20 && (uint8_t)c < 0x7F) {
+      if (_rxBufLen < sizeof(_rxBuf) - 1) {
+        _rxBuf[_rxBufLen++] = c;
+      }
+      _lastByteTime = millis();
+    }
   }
 
-  // Nach 20 ms Pause ohne neue Bytes → Paket vollstaendig
-  if (_rxBuffer.length() > 0 && (millis() - _lastByteTime) >= 20) {
-    String data = _rxBuffer;
-    _rxBuffer   = "";
-    data.trim();
-    if (data.length() > 0) {
-      _processRx(data);
-    }
+  // Fallback: nach 100 ms ohne \n → Puffer trotzdem verarbeiten (AT-Antworten des HM-10)
+  if (_rxBufLen > 0 && _lastByteTime > 0 &&
+      (millis() - _lastByteTime) >= 100) {
+    _lastByteTime = 0;
+    _dispatchRx();
   }
 
 }
@@ -239,62 +256,79 @@ bool CCARemoteBLE::isConnected() {
 
 void CCARemoteBLE::sendInternal(String key, String value) {
   if (_connected && _authenticated) {
-    _sendRaw(key + ":" + value);
+    _sendRaw(key + ":" + value + "\n");
   }
 }
 
-void CCARemoteBLE::_processRx(String data) {
+void CCARemoteBLE::_dispatchRx() {
+  _rxBuf[_rxBufLen] = '\0';
+  _rxBufLen = 0;
+
+  // In-place trimmen: führende/abschließende Leerzeichen entfernen
+  char* p = _rxBuf;
+  while (*p == ' ') p++;
+  uint8_t len = strlen(p);
+  while (len > 0 && p[len - 1] == ' ') p[--len] = '\0';
+
+  if (len > 0) _processRx(p);
+}
+
+void CCARemoteBLE::_processRx(const char* raw) {
+  // if (debugMode != CCA_DEBUG_OFF) {
+  //   Serial.print(F("[CCA] HM-10 RX: \""));
+  //   Serial.print(raw);
+  //   Serial.println('"');
+  // }
+
   // Verbindungs-Events (je nach HM-10-Firmware-Version)
-  if (data.indexOf("OK+CONN") >= 0 || data.indexOf("+CONNECTED") >= 0) {
+  // strstr() arbeitet direkt auf dem char* – kein String-Heap nötig
+  if (strstr(raw, "OK+CONN") || strstr(raw, "+CONNECTED")) {
     _connected     = true;
     _authenticated = _blePassword.length() == 0;
     _pendingResync = true;
-    if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung hergestellt");
+    if (debugMode != CCA_DEBUG_OFF) Serial.println(F("[CCA] Verbindung hergestellt"));
     return;
   }
-  if (data.indexOf("OK+LOST") >= 0 || data.indexOf("OK+LOSTA") >= 0 ||
-      data.indexOf("+DISCONNECTED") >= 0 || data.indexOf("DISCONNECT") >= 0) {
+  if (strstr(raw, "OK+LOST") || strstr(raw, "+DISCONNECTED") || strstr(raw, "DISCONNECT")) {
     _connected     = false;
     _authenticated = false;
     _lastByteTime  = 0;
-    Serial.println("[CCA] Verbindung getrennt");
+    Serial.println(F("[CCA] Verbindung getrennt"));
     return;
   }
 
   // AT-Antworten des Moduls ignorieren
-  if (data.startsWith("OK+")) return;
+  if (strncmp(raw, "OK+", 3) == 0) return;
 
   // Viele HM-10 Klone senden kein Verbindungs-Event → beim ersten Datenpaket implizit verbinden
   if (!_connected) {
     _connected     = true;
     _authenticated = _blePassword.length() == 0;
     _pendingResync = true;
-    if (debugMode != CCA_DEBUG_OFF) Serial.println("[CCA] Verbindung hergestellt (implizit)");
+    if (debugMode != CCA_DEBUG_OFF) Serial.println(F("[CCA] Verbindung hergestellt (implizit)"));
   }
 
-  // Authentifizierung pruefen, falls Passwort gesetzt
-  if (!_blePassword.length() == 0 && !_authenticated) {
-    if (data == "AUTH:" + _blePassword) {
+  // Authentifizierung prüfen, falls Passwort gesetzt
+  if (_blePassword.length() > 0 && !_authenticated) {
+    String authExpected = "AUTH:" + _blePassword;
+    if (strcmp(raw, authExpected.c_str()) == 0) {
       _authenticated = true;
       _pendingResync = true;
-      Serial.println("BLE Authentifizierung erfolgreich!");
-      _sendRaw("AUTH:OK");
+      Serial.println(F("BLE Authentifizierung erfolgreich!"));
+      _sendRaw("AUTH:OK\n");
     } else {
-      Serial.println("BLE Authentifizierung fehlgeschlagen!");
-      _sendRaw("AUTH:FAIL");
-      // HM-10 kann nicht aktiv trennen – als getrennt markieren
-      // damit keine weiteren Befehle verarbeitet werden
+      Serial.println(F("BLE Authentifizierung fehlgeschlagen!"));
+      _sendRaw("AUTH:FAIL\n");
       _connected = false;
     }
     return;
   }
 
   if (!_authenticated) return;
+  if (strcmp(raw, "AUTH") == 0 || strncmp(raw, "AUTH:", 5) == 0) return;
 
-  // Auth-Handshake der App ohne Passwort ignorieren
-  if (data == "AUTH" || data.startsWith("AUTH:")) return;
-
-  processCommand(data);
+  // Einmalige String-Allokation erst hier, wo processCommand() sie braucht
+  processCommand(String(raw));
 }
 
 void CCARemoteBLE::_sendRaw(String msg) {
