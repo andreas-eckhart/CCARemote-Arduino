@@ -67,6 +67,8 @@ public:
       return;
     }
 
+    if (value == "AUTH" || value.startsWith("AUTH:")) return;
+
     parent->lastCommand     = value;
     parent->commandReceived = true;
   }
@@ -140,7 +142,7 @@ void CCARemoteBLE::handle() {
 }
 
 bool CCARemoteBLE::isConnected() {
-  return deviceConnected;
+  return deviceConnected && authenticated;
 }
 
 void CCARemoteBLE::sendInternal(String key, String value) {
@@ -251,7 +253,7 @@ void CCARemoteBLE::handle() {
 }
 
 bool CCARemoteBLE::isConnected() {
-  return _connected;
+  return _connected && _authenticated;
 }
 
 void CCARemoteBLE::sendInternal(String key, String value) {
