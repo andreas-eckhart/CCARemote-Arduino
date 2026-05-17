@@ -67,7 +67,10 @@ public:
       return;
     }
 
-    if (value == "AUTH" || value.startsWith("AUTH:")) return;
+    if (value == "AUTH" || value.startsWith("AUTH:")) {
+      parent->_pendingResync = true;
+      return;
+    }
 
     parent->lastCommand     = value;
     parent->commandReceived = true;
@@ -284,7 +287,8 @@ void CCARemoteBLE::_processRx(const char* raw) {
 
   // Verbindungs-Events (je nach HM-10-Firmware-Version)
   // strstr() arbeitet direkt auf dem char* – kein String-Heap nötig
-  if (strstr(raw, "OK+CONN") || strstr(raw, "+CONNECTED")) {
+  if (strstr(raw, "OK+CONN") || strstr(raw, "+CONNECTED") ||
+      strcmp(raw, "CONNECTED") == 0) {
     _connected     = true;
     _authenticated = _blePassword.length() == 0;
     _pendingResync = true;
@@ -311,23 +315,55 @@ void CCARemoteBLE::_processRx(const char* raw) {
   }
 
   // Authentifizierung prüfen, falls Passwort gesetzt
+  // strstr statt strcmp: toleriert Garbage-Bytes vor AUTH: (HM-10 AT-Antworten)
   if (_blePassword.length() > 0 && !_authenticated) {
     String authExpected = "AUTH:" + _blePassword;
-    if (strcmp(raw, authExpected.c_str()) == 0) {
+    if (strstr(raw, authExpected.c_str()) != nullptr) {
       _authenticated = true;
       _pendingResync = true;
       Serial.println(F("BLE Authentifizierung erfolgreich!"));
       _sendRaw("AUTH:OK\n");
-    } else {
+    } else if (strstr(raw, "AUTH:") != nullptr) {
       Serial.println(F("BLE Authentifizierung fehlgeschlagen!"));
       _sendRaw("AUTH:FAIL\n");
       _connected = false;
     }
+    // kein AUTH: gefunden → Garbage vor dem ersten Write, ignorieren
     return;
   }
 
   if (!_authenticated) return;
-  if (strcmp(raw, "AUTH") == 0 || strncmp(raw, "AUTH:", 5) == 0) return;
+  if (strcmp(raw, "AUTH") == 0 || strncmp(raw, "AUTH:", 5) == 0) {
+    // AUTH-Befehl der App = Subscription aktiv → Display-Werte jetzt sicher senden
+    _pendingResync = true;
+    return;
+  }
+
+  // Garbage-Filter: HM-10 injiziert AT-Response-Bytes vor den Nutzdaten.
+  // CCA-Keys beginnen immer mit Kleinbuchstabe (color1, axisX, button1, ...).
+  // Ein echter Key enthält keinen Großbuchstaben direkt vor einem Kleinbuchstaben
+  // (axisX ist ok: X steht am Ende; swRcolor1 ist kein Key: R→c ist ungültig).
+  {
+    const char* cmdStart = nullptr;
+    for (const char* p = raw; *p; p++) {
+      if (islower((uint8_t)*p)) {
+        const char* q = p;
+        while (isalnum((uint8_t)*q)) q++;
+        if (*q == ':' || *q == '\0') {
+          bool valid = true;
+          for (const char* r = p; r < q - 1; r++) {
+            if (isupper((uint8_t)*r) && islower((uint8_t)*(r + 1))) {
+              valid = false;
+              break;
+            }
+          }
+          if (valid) { cmdStart = p; break; }
+        }
+      }
+    }
+    if (!cmdStart) return;  // kein gültiger Key gefunden → Garbage verwerfen
+    raw = cmdStart;
+  }
 
   // Einmalige String-Allokation erst hier, wo processCommand() sie braucht
   processCommand(String(raw));
