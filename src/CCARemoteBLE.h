@@ -101,6 +101,8 @@ class CCARemoteBLE : public CCARemote {
     char            _rxBuf[128];
     uint8_t         _rxBufLen;
     unsigned long   _lastByteTime;
+    unsigned long   _lastRxMs;
+    unsigned long   _disconnectLockout;
 
     void _dispatchRx();
     void _processRx(const char* raw);

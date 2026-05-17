@@ -49,6 +49,8 @@ public:
     String value = pChar->getValue().c_str();
     value.trim();
     if (value.length() == 0) return;
+    int gteIdx = value.indexOf('>');
+    if (gteIdx >= 0) { value = value.substring(gteIdx + 1); if (value.length() == 0) return; }
 
     if (!parent->blePassword.length() == 0 && !parent->authenticated) {
       if (value == "AUTH:" + parent->blePassword) {
@@ -71,6 +73,8 @@ public:
       parent->_pendingResync = true;
       return;
     }
+
+    if (value.startsWith("ping:")) return;  // Heartbeat der App
 
     parent->lastCommand     = value;
     parent->commandReceived = true;
@@ -173,7 +177,9 @@ CCARemoteBLE::CCARemoteBLE(String name, String prefix,
     _connected(false), _authenticated(false),
     _blePassword(password),
     _rxBufLen(0),
-    _lastByteTime(0)
+    _lastByteTime(0),
+    _lastRxMs(0),
+    _disconnectLockout(0)
 {
   _rxBuf[0] = '\0';
 }
@@ -198,6 +204,10 @@ void CCARemoteBLE::begin() {
   // Geraetename setzen (HM-10: max. 12 Zeichen)
   String n = deviceName.substring(0, min((int)deviceName.length(), 12));
   _serial->print("AT+NAME" + n);
+  delay(200);
+
+  // Verbindungsbenachrichtigungen aktivieren (OK+CONN / OK+LOST)
+  _serial->print("AT+NOTI1");
   delay(200);
 
   // Slave-Modus sicherstellen
@@ -253,6 +263,15 @@ void CCARemoteBLE::handle() {
     _dispatchRx();
   }
 
+  // Verbindungs-Watchdog: 3 verpasste Pings (à 2 s) → Verbindung als verloren markieren
+  if (_connected && _lastRxMs > 0 && (millis() - _lastRxMs) >= 6000UL) {
+    _connected         = false;
+    _authenticated     = false;
+    _lastRxMs          = 0;
+    _disconnectLockout = millis();
+    if (debugMode != CCA_DEBUG_OFF) Serial.println(F("[CCA] Verbindung getrennt (Timeout)"));
+  }
+
 }
 
 bool CCARemoteBLE::isConnected() {
@@ -279,6 +298,10 @@ void CCARemoteBLE::_dispatchRx() {
 }
 
 void CCARemoteBLE::_processRx(const char* raw) {
+  // '>' Startmarker: App sendet '>cmd\n' – Garbage-Bytes davor werden abgeschnitten
+  const char* gte = strchr(raw, '>');
+  if (gte != nullptr) { raw = gte + 1; if (*raw == '\0') return; }
+
   // if (debugMode != CCA_DEBUG_OFF) {
   //   Serial.print(F("[CCA] HM-10 RX: \""));
   //   Serial.print(raw);
@@ -289,16 +312,20 @@ void CCARemoteBLE::_processRx(const char* raw) {
   // strstr() arbeitet direkt auf dem char* – kein String-Heap nötig
   if (strstr(raw, "OK+CONN") || strstr(raw, "+CONNECTED") ||
       strcmp(raw, "CONNECTED") == 0) {
-    _connected     = true;
-    _authenticated = _blePassword.length() == 0;
-    _pendingResync = true;
+    _connected          = true;
+    _authenticated      = _blePassword.length() == 0;
+    _pendingResync      = true;
+    _lastRxMs           = 0;
+    _disconnectLockout  = 0;
     if (debugMode != CCA_DEBUG_OFF) Serial.println(F("[CCA] Verbindung hergestellt"));
     return;
   }
   if (strstr(raw, "OK+LOST") || strstr(raw, "+DISCONNECTED") || strstr(raw, "DISCONNECT")) {
-    _connected     = false;
-    _authenticated = false;
-    _lastByteTime  = 0;
+    _connected          = false;
+    _authenticated      = false;
+    _lastByteTime       = 0;
+    _lastRxMs           = 0;
+    _disconnectLockout  = millis();
     Serial.println(F("[CCA] Verbindung getrennt"));
     return;
   }
@@ -307,10 +334,13 @@ void CCARemoteBLE::_processRx(const char* raw) {
   if (strncmp(raw, "OK+", 3) == 0) return;
 
   // Viele HM-10 Klone senden kein Verbindungs-Event → beim ersten Datenpaket implizit verbinden
+  // Nach einem Disconnect: 3-Sekunden-Lockout blockiert Spät-Pakete (Pings, HM-10-Garbage)
   if (!_connected) {
-    _connected     = true;
-    _authenticated = _blePassword.length() == 0;
-    _pendingResync = true;
+    if (_disconnectLockout > 0 && (millis() - _disconnectLockout) < 6000UL) return;
+    _connected          = true;
+    _authenticated      = _blePassword.length() == 0;
+    _pendingResync      = true;
+    _disconnectLockout  = 0;
     if (debugMode != CCA_DEBUG_OFF) Serial.println(F("[CCA] Verbindung hergestellt (implizit)"));
   }
 
@@ -363,6 +393,22 @@ void CCARemoteBLE::_processRx(const char* raw) {
     }
     if (!cmdStart) return;  // kein gültiger Key gefunden → Garbage verwerfen
     raw = cmdStart;
+  }
+
+  // Watchdog-Zeitstempel bei jedem gültigen Datenpaket aktualisieren
+  _lastRxMs = millis();
+
+  // Heartbeat der App – kein Befehl, nur Watchdog-Reset
+  if (strncmp(raw, "ping:", 5) == 0) return;
+
+  // Trennungsbefehl der App
+  if (strncmp(raw, "disconnect:", 11) == 0) {
+    _connected         = false;
+    _authenticated     = false;
+    _lastRxMs          = 0;
+    _disconnectLockout = millis();
+    if (debugMode != CCA_DEBUG_OFF) Serial.println(F("[CCA] Verbindung getrennt (App)"));
+    return;
   }
 
   // Einmalige String-Allokation erst hier, wo processCommand() sie braucht
