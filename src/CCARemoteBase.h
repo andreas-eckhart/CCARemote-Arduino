@@ -15,7 +15,10 @@
 #define CCAREMOTE_BASE_H
 
 // Version der Bibliothek
-#define CCAREMOTE_VERSION "1.1.0"
+#define CCA_LIB_VERSION      "1.1.0"
+// Protokollversion – wird nur bei Breaking Changes erhöht
+#define CCA_PROTOCOL_VERSION "1"
+#define CCA_PLATFORM         "arduino"
 
 #include <Arduino.h>
 

@@ -48,8 +48,15 @@ void setup() {
   remote.receive("slider1", slider1_val);
   remote.receive("switch1", switch1_val);
   remote.receive("input1",  command);
+  
+  // Joystick
   remote.receive("axisX",   axisX_val);
   remote.receive("axisY",   axisY_val);
+  // Automatischer Nullwert bei Verbindungsverlust für Joystick
+  remote.watchdog("axisX", 500);  // axisX → 0 wenn 500 ms kein Update
+  remote.watchdog("axisY", 500);  // axisY → 0 wenn 500 ms kein Update
+
+  // Color-Picker
   remote.receiveColor("color1", r, g, b);
 
   pinMode(LED_BUTTON, OUTPUT);

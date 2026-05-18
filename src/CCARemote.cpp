@@ -326,6 +326,10 @@ void CCARemote::_checkWatchdogs() {
 // ================================================================
 
 void CCARemote::_resyncDisplay() {
+  // Handshake-Keys immer zuerst senden (protocol, platform, libVersion)
+  sendInternal("protocol",   CCA_PROTOCOL_VERSION);
+  sendInternal("platform",   CCA_PLATFORM);
+  sendInternal("libVersion", CCA_LIB_VERSION);
 #if defined(__AVR__)
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
