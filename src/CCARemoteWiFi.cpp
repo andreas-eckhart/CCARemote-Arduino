@@ -43,7 +43,7 @@ void CCARemoteWiFi::begin() {
 #endif
   Serial.println("\nCCA Remote startet (WiFi)...");
   if (debugMode == CCA_DEBUG_ALL)
-    Serial.println("[CCA] Lib: " CCA_LIB_VERSION "  |  Protokoll: " CCA_PROTOCOL_VERSION);
+    Serial.println("[CCA] Library: " CCA_LIB_VERSION "  |  Protokoll: " CCA_PROTOCOL_VERSION);
   Serial.println("Geraetename: " + deviceName);
 
 #if defined(ESP8266)
