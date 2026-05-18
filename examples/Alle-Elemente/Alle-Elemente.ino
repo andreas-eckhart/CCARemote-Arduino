@@ -24,6 +24,9 @@ const int LED_BUTTON = 25;  // LED für Button-Element
 const int LED_SLIDER = 18;  // LED für Slider-Element (PWM-fähiger Pin)
 const int LED_SWITCH = 21;  // LED für Switch-Element
 const int LED_INPUT  = 22;  // LED für Input-Element
+const int PIN_R      = 26;  // PWM-Pin für RGB-LED Rot   (Color-Picker)
+const int PIN_G      = 27;  // PWM-Pin für RGB-LED Grün  (Color-Picker)
+const int PIN_B      = 32;  // PWM-Pin für RGB-LED Blau  (Color-Picker)
 
 // --- Variablen - speichern von App übermittelte Werte ---
 // --- werden von remote.handle() automatisch aktualisiert ---
@@ -33,6 +36,7 @@ bool   switch1_val = false;  // true = ein; false = aus
 int    axisX_val   = 0;      // X-Achse: -255 bis +255
 int    axisY_val   = 0;      // Y-Achse: -255 bis +255
 String command     = "";     // beliebige Benutzereingabe
+int    r = 0, g = 0, b = 0;  // RGB-Farbwerte (Color-Picker)
 
 
 void setup() {
@@ -46,11 +50,15 @@ void setup() {
   remote.receive("input1",  command);
   remote.receive("axisX",   axisX_val);
   remote.receive("axisY",   axisY_val);
+  remote.receiveColor("color1", r, g, b);
 
   pinMode(LED_BUTTON, OUTPUT);
   pinMode(LED_SLIDER, OUTPUT);
   pinMode(LED_SWITCH, OUTPUT);
   pinMode(LED_INPUT,  OUTPUT);
+  pinMode(PIN_R, OUTPUT);
+  pinMode(PIN_G, OUTPUT);
+  pinMode(PIN_B, OUTPUT);
 }
 
 void loop() {
@@ -66,6 +74,11 @@ void loop() {
       digitalWrite(LED_INPUT, command == "ON" ? HIGH : LOW);
     }
 
+    // Color-Picker-Werte auf RGB-LED ausgeben
+    analogWrite(PIN_R, r);
+    analogWrite(PIN_G, g);
+    analogWrite(PIN_B, b);
+
     // Slider-Wert an Display-Element der App senden
     remote.send("display1", slider1_val);
 
@@ -78,5 +91,8 @@ void loop() {
     analogWrite(LED_SLIDER,  0);
     digitalWrite(LED_SWITCH, LOW);
     digitalWrite(LED_INPUT,  LOW);
+    analogWrite(PIN_R, 0);
+    analogWrite(PIN_G, 0);
+    analogWrite(PIN_B, 0);
   }
 }
