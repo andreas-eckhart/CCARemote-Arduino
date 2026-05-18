@@ -97,9 +97,9 @@ CCARemoteBLE::CCARemoteBLE(String name, String prefix,
 void CCARemoteBLE::begin() {
   Serial.begin(_serialBaudRate);
   Serial.println("\nCCA Remote startet (BLE)...");
-  Serial.println("Geraetename: " + deviceName);
   if (debugMode == CCA_DEBUG_ALL)
     Serial.println("[CCA] Lib: " CCA_LIB_VERSION "  |  Protokoll: " CCA_PROTOCOL_VERSION);
+  Serial.println("Geraetename: " + deviceName);
 
   BLEDevice::init(deviceName.c_str());
 
