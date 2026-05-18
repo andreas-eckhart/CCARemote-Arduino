@@ -23,152 +23,67 @@ Unterstützte Hardware:
 
 ## Installation
 
-Die Bibliothek ist im Arduino IDE und PlatformIO Bibliothek-Manager unter dem Namen "CCARemote" verfügbar. Die Bibliothk beinhaltet zahlreiche Beispiele.
+Die Bibliothek ist im Arduino IDE und PlatformIO Bibliothek-Manager unter dem Namen "CCARemote" verfügbar. Die Bibliothek beinhaltet zahlreiche Beispiele.
 
 ---
 
-## Klassen im Überblick
+## Schnellstart
 
-| Klasse | Protokoll | `#include` | Hardware |
-|---|---|---|---|
-| `CCARemoteBLE` | Bluetooth Low Energy | `#include <CCARemoteBLE.h>` | ESP32 oder ESP8266 / Arduino + HM-10 |
-| `CCARemoteWiFi` | WiFi Hotspot (TCP)  | `#include <CCARemoteWiFi.h>` | ESP32, ESP8266 |
-
-> `CCARemoteBLE` erkennt die Zielplattform **automatisch beim Kompilieren** und wählt die passende Implementierung – der Sketch-Code bleibt auf beiden Plattformen identisch.
-
----
-
-## CCARemoteBLE – Bluetooth
-
-### ESP32 (natives BLE)
+4 Zeilen konfigurieren, `#include <CCARemote.h>` – fertig. Das `remote`-Objekt wird automatisch angelegt und `begin()` hat keine Parameter:
 
 ```cpp
-#include <CCARemoteBLE.h>
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"    // Gerätename (wird als "CCA-MeinName" angezeigt)
+#define CONNECTION   CCA_BLE       // CCA_BLE  oder  CCA_WIFI
+#define PASSWORD     ""            // Passwort (WiFi: min. 8 Zeichen / leer = ohne)
+#define DEBUG_LEVEL  CCA_DEBUG_ALL // CCA_DEBUG_OFF / _IN / _OUT / _ALL
 
-CCARemoteBLE remote("MeinName");
+// Optional – nur setzen wenn Standardwert nicht passt:
+// #define DEVICE_PREFIX "XYZ-"   // Standard: "CCA-"
+// #define TCP_PORT      4211     // Standard: 4210  (nur WiFi)
+// #define BAUD_RATE     9600     // Standard: 115200
+// -----------------------------------------------------------
 
-bool ledAn      = false;
-int  helligkeit = 0;
+#include <CCARemote.h>
+
+bool switch_led = false;
 
 void setup() {
-  remote.begin("12345678");  // BLE AUTH-Passwort (leer = ohne Passwort)
+  remote.begin();
 
-  remote.receive("ledAn",      ledAn);
-  remote.receive("helligkeit", helligkeit);
+  remote.receive("switch1", switch_led);
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
   remote.handle();
 
-  digitalWrite(LED_PIN, ledAn);
-  analogWrite(PWM_PIN,  helligkeit);
+  if (remote.isConnected()) {
+    digitalWrite(LED_BUILTIN, switch_led ? HIGH : LOW);
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
+  }
 }
 ```
 
-### Arduino Uno / Nano mit HM-10-Modul
-
-```cpp
-#include <CCARemoteBLE.h>
-
-// Standard: RX=10, TX=11, 9600 Baud
-CCARemoteBLE remote("MeinName");
-
-// Eigene Pins / Baudrate:
-// CCARemoteBLE remote("MeinName", "CCA-", 8, 9, 9600);
-
-bool ledAn      = false;
-int  helligkeit = 0;
-
-void setup() {
-  remote.begin("12345678");  // BLE AUTH-Passwort (leer = ohne Passwort)
-
-  remote.receive("ledAn",      ledAn);
-  remote.receive("helligkeit", helligkeit);
-}
-
-void loop() {
-  remote.handle();
-
-  digitalWrite(LED_PIN, ledAn);
-  analogWrite(PWM_PIN,  helligkeit);
-}
-```
-
-#### Konstruktor-Parameter (nur Arduino bzw. ESP8266 mit HM-10)
-
-```cpp
-CCARemoteBLE remote(name, prefix, rxPin, txPin, baudRate);
-```
-
-| Parameter | Typ | Standard | Beschreibung |
-|---|---|---|---|
-| `name` | `String` | – | Gerätename (wird mit Prefix kombiniert) |
-| `prefix` | `String` | `"CCA-"` | Prefix für den Gerätenamen |
-| `rxPin` | `uint8_t` | `10` | Arduino-Pin → HM-10 TX |
-| `txPin` | `uint8_t` | `11` | Arduino-Pin → HM-10 RX |
-| `baudRate` | `uint32_t` | `9600` | Baudrate des HM-10-Moduls |
-
-#### HM-10 Verdrahtung
-
-| HM-10 | Arduino Uno / Nano |
-|---|---|
-| VCC | 3,3 V oder 5 V (je nach Modul) |
-| GND | GND |
-| TXD | Pin 10 (RX) |
-| RXD | Pin 11 (TX) – bei 5-V-Arduinos Spannungsteiler empfohlen¹ |
-
-> ¹ Der HM-10 arbeitet mit 3,3-V-Logik. Ein Spannungsteiler (z. B. 10 kΩ / 20 kΩ) schützt den Eingang des Moduls vor den 5-V-Pegeln des Arduino.
-
-> **Hinweis für Klon-Module:** Viele günstige HM-10 Klon-Module haben TXD und RXD aus der Gegenperspektive beschriftet. Falls keine Verbindung zustande kommt, einfach die beiden Datenleitungen tauschen (Pin 10 ↔ Pin 11).
-
-#### Hinweise zum HM-10
-
-- **BLE-Name:** Der Gerätename muss bei einigen Klon-Modellen einmalig manuell per AT-Befehl gesetzt werden, da das AT-Kommando je nach Firmware-Variante unterschiedlich interpretiert wird. Den Namen einmalig mit einem Serial-Terminal senden: `AT+NAMEMeinName` (kein Leerzeichen, kein Zeilenumbruch). Der Name bleibt dauerhaft im Flash des Moduls gespeichert.
-- Bei Auth-Fehler kann das HM-10 die Verbindung nicht aktiv trennen; die App übernimmt das und zeigt die Fehlermeldung an.
-- Gerätenamen werden auf 12 Zeichen begrenzt (HM-10-Firmware-Limit).
-- Getestete Firmware: v5xx. Bei abweichenden Verbindungs-Events (z. B. `AT+CONNECTED` statt `OK+CONN`) ggf. Firmware updaten.
+Um zwischen BLE und WiFi zu wechseln, nur `CONNECTION` ändern – der restliche Sketch-Code bleibt identisch.
 
 ---
 
-## CCARemoteWiFi – WiFi Hotspot
+## Konfiguration (#defines)
 
-```cpp
-#include <CCARemoteWiFi.h>
-
-CCARemoteWiFi remote("MeinName");
-
-bool ledChange = false;
-
-void setup() {
-  remote.begin("12345678");  // WLAN-Passwort (leer = offenes Netz)
-
-  remote.receive("ledChange", ledChange);
-}
-
-void loop() {
-  remote.handle();
-
-  digitalWrite(LED_PIN, ledChange);
-}
-```
-
-ESP32 und ESP8266 erstellen einen WLAN-Hotspot mit dem Namen `CCA-MeinName`.  
-Die App verbindet sich damit und kommuniziert über eine persistente TCP-Verbindung.
-
-**`begin(wifiPassword, port)`**
-
-| Parameter | Typ | Standard | Beschreibung |
-|---|---|---|---|
-| `wifiPassword` | `String` | `""` | WLAN-Passwort (leer = offenes Netzwerk, sonst WPA2) |
-| `port` | `uint16_t` | `4210` | TCP-Port für die App-Verbindung |
-
-```cpp
-remote.begin();                      // offenes Netzwerk, Port 4210
-remote.begin("geheim1234");          // WPA2, Port 4210
-remote.begin("geheim1234", 5000);    // WPA2, abweichender Port
-```
-
-> **Hinweis Passwortlänge:** WPA2 erfordert mindestens **8 Zeichen**. Ein kürzeres Passwort führt dazu, dass der Hotspot nicht gestartet wird. Die Library gibt in diesem Fall eine Fehlermeldung im Seriellen Monitor aus.
+| Define | Standard | Beschreibung |
+|---|---|---|
+| `DEVICE_NAME` | – | **Pflicht.** Gerätename, wird als `CCA-<name>` angezeigt |
+| `CONNECTION` | – | **Pflicht.** `CCA_BLE` oder `CCA_WIFI` |
+| `PASSWORD` | `""` | Passwort (BLE: AUTH-Passwort, WiFi: WPA2-Passwort ≥ 8 Zeichen) |
+| `DEBUG_LEVEL` | `CCA_DEBUG_OFF` | `CCA_DEBUG_OFF` / `CCA_DEBUG_IN` / `CCA_DEBUG_OUT` / `CCA_DEBUG_ALL` |
+| `DEVICE_PREFIX` | `"CCA-"` | Prefix für den Gerätenamen |
+| `TCP_PORT` | `4210` | TCP-Port (nur WiFi) |
+| `BAUD_RATE` | `115200` | Baudrate für den Seriellen Monitor |
+| `HM10_RX_PIN` | `10` | RX-Pin des HM-10-Moduls (nur Arduino Uno/Nano) |
+| `HM10_TX_PIN` | `11` | TX-Pin des HM-10-Moduls (nur Arduino Uno/Nano) |
+| `HM10_BAUD` | `9600` | Baudrate des HM-10-Moduls (nur Arduino Uno/Nano) |
 
 ---
 
@@ -201,10 +116,14 @@ remote.begin("geheim1234", 5000);    // WPA2, abweichender Port
 
 ### `begin()` – Verbindung starten
 
-| Klasse | Aufruf |
-|---|---|
-| `CCARemoteBLE` | `remote.begin()` oder `remote.begin("passwort")` |
-| `CCARemoteWiFi` | `remote.begin()`, `remote.begin("passwort")` oder `remote.begin("passwort", port)` |
+Startet BLE-Advertising oder WLAN-Hotspot. Alle Parameter werden über die `#define`-Zeilen oben im Sketch gesetzt – `begin()` hat keine Parameter.
+
+```cpp
+void setup() {
+  remote.begin();
+  // ...
+}
+```
 
 ---
 
@@ -311,44 +230,6 @@ remote.send("spannung", 3.7, 2);  // "3.70"
 
 ---
 
-### `debug()` – Seriellen Monitor aktivieren
-
-Aktiviert die Ausgabe empfangener und/oder gesendeter Werte im Seriellen Monitor. Ruft automatisch `Serial.begin()` mit der angegebenen Baudrate auf.
-
-```cpp
-remote.debug();                        // IN + OUT, 9600 Baud (Standard)
-remote.debug(CCA_DEBUG_ALL, 115200);   // IN + OUT, 115200 Baud
-remote.debug(CCA_DEBUG_IN);           // nur empfangene Werte (IN)
-remote.debug(CCA_DEBUG_OUT);          // nur gesendete Werte (OUT)
-remote.debug(CCA_DEBUG_OFF);          // Debug-Modus deaktivieren
-```
-
-| Modus | Wert | Beschreibung |
-|---|---|---|
-| `CCA_DEBUG_OFF` | `0` | Kein Debug-Output |
-| `CCA_DEBUG_IN`  | `1` | Empfangene Werte ausgeben (`[CCA] IN  key = wert`) |
-| `CCA_DEBUG_OUT` | `2` | Gesendete Werte ausgeben (`[CCA] OUT key = wert`) |
-| `CCA_DEBUG_ALL` | `3` | Empfangene und gesendete Werte ausgeben |
-
-| Parameter | Typ | Standard | Beschreibung |
-|---|---|---|---|
-| `mode` | `CCADebugMode` | `CCA_DEBUG_ALL` | Welche Richtung(en) ausgegeben werden |
-| `baudRate` | `unsigned long` | `9600` | Baudrate für `Serial.begin()` |
-
-> **Hinweis:** `debug()` muss **vor** `remote.begin()` aufgerufen werden.
-
----
-
-### Gerätename und Prefix anpassen
-
-```cpp
-CCARemoteBLE remote("Roboter");           // → "CCA-Roboter"  (Standard)
-CCARemoteBLE remote("Roboter", "HTL-");   // → "HTL-Roboter"
-CCARemoteBLE remote("Roboter", "");       // → "Roboter"  (kein Prefix)
-```
-
----
-
 ### `handle()` – Verarbeitung (zwingend in `loop()`)
 
 ```cpp
@@ -393,13 +274,48 @@ void setup() {
 
 ---
 
-## Vollständiges Beispiel (BLE)
+### `debug()` – Debug-Level zur Laufzeit ändern
+
+Normalerweise wird der Debug-Level über `#define DEBUG_LEVEL` festgelegt. Mit `debug()` kann er im Sketch nachträglich geändert werden:
 
 ```cpp
-#include <CCARemoteBLE.h>
+remote.debug(CCA_DEBUG_ALL);    // IN + OUT ausgeben
+remote.debug(CCA_DEBUG_IN);     // nur empfangene Werte
+remote.debug(CCA_DEBUG_OUT);    // nur gesendete Werte
+remote.debug(CCA_DEBUG_OFF);    // Debug deaktivieren
+```
 
-CCARemoteBLE remote("MeinName");  // Namen hier anpassen!
-// Arduino + HM-10 mit eigenen Pins: CCARemoteBLE remote("MeinName", "CCA-", 8, 9);
+| Modus | Wert | Beschreibung |
+|---|---|---|
+| `CCA_DEBUG_OFF` | `0` | Kein Debug-Output |
+| `CCA_DEBUG_IN`  | `1` | Empfangene Werte ausgeben (`[CCA] IN  key = wert`) |
+| `CCA_DEBUG_OUT` | `2` | Gesendete Werte ausgeben (`[CCA] OUT key = wert`) |
+| `CCA_DEBUG_ALL` | `3` | Empfangene und gesendete Werte ausgeben |
+
+---
+
+### Gerätename und Prefix anpassen
+
+```cpp
+#define DEVICE_NAME   "Roboter"
+#define DEVICE_PREFIX "HTL-"    // → "HTL-Roboter"
+// oder:
+#define DEVICE_PREFIX ""        // → "Roboter"  (kein Prefix)
+```
+
+---
+
+## Vollständiges Beispiel
+
+```cpp
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"
+#define CONNECTION   CCA_BLE
+#define PASSWORD     ""
+#define DEBUG_LEVEL  CCA_DEBUG_ALL
+// -----------------------------------------------------------
+
+#include <CCARemote.h>
 
 const int LED_BUTTON = 18;
 const int LED_SLIDER = 19;
@@ -412,6 +328,7 @@ bool ledSwitch  = false;
 void setup() {
   pinMode(LED_BUTTON, OUTPUT);
   pinMode(LED_SWITCH, OUTPUT);
+
   remote.begin();
 
   remote.receive("changeLed",  changeLed);
@@ -439,9 +356,14 @@ void loop() {
 ## Color Picker – RGB-LED Beispiel
 
 ```cpp
-#include <CCARemoteBLE.h>
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"
+#define CONNECTION   CCA_BLE
+#define PASSWORD     ""
+#define DEBUG_LEVEL  CCA_DEBUG_ALL
+// -----------------------------------------------------------
 
-CCARemoteBLE remote("MeinName");
+#include <CCARemote.h>
 
 // Pins der gemeinsamen Kathode RGB-LED (PWM-fähige Pins)
 const int PIN_R = 25;
@@ -474,6 +396,59 @@ void loop() {
 
 ---
 
+## Arduino Uno / Nano mit HM-10-Modul
+
+Für Arduino Uno und Nano wird `CONNECTION CCA_BLE` automatisch über ein HM-10-Modul per SoftwareSerial abgewickelt. Die Pin-Konfiguration erfolgt ebenfalls über `#define`:
+
+```cpp
+// ---- Konfiguration – hier anpassen! -----------------------
+#define DEVICE_NAME  "MeinName"
+#define CONNECTION   CCA_BLE
+#define PASSWORD     ""
+#define DEBUG_LEVEL  CCA_DEBUG_ALL
+#define HM10_RX_PIN  10          // Standard: 10
+#define HM10_TX_PIN  11          // Standard: 11
+#define HM10_BAUD    9600        // Standard: 9600
+// -----------------------------------------------------------
+
+#include <CCARemote.h>
+
+bool ledAn = false;
+
+void setup() {
+  remote.begin();
+  remote.receive("ledAn", ledAn);
+  pinMode(LED_BUILTIN, OUTPUT);
+}
+
+void loop() {
+  remote.handle();
+  digitalWrite(LED_BUILTIN, ledAn ? HIGH : LOW);
+}
+```
+
+### HM-10 Verdrahtung
+
+| HM-10 | Arduino Uno / Nano |
+|---|---|
+| VCC | 3,3 V oder 5 V (je nach Modul) |
+| GND | GND |
+| TXD | Pin 10 (RX, via `HM10_RX_PIN`) |
+| RXD | Pin 11 (TX, via `HM10_TX_PIN`) – bei 5-V-Arduinos Spannungsteiler empfohlen¹ |
+
+> ¹ Der HM-10 arbeitet mit 3,3-V-Logik. Ein Spannungsteiler (z. B. 10 kΩ / 20 kΩ) schützt den Eingang des Moduls vor den 5-V-Pegeln des Arduino.
+
+> **Hinweis für Klon-Module:** Viele günstige HM-10 Klon-Module haben TXD und RXD aus der Gegenperspektive beschriftet. Falls keine Verbindung zustande kommt, einfach die beiden Datenleitungen tauschen.
+
+### Weitere HM-10 Hinweise
+
+- **BLE-Name:** Der Gerätename muss bei einigen Klon-Modellen einmalig manuell per AT-Befehl gesetzt werden: `AT+NAMEMeinName` (kein Leerzeichen, kein Zeilenumbruch). Der Name bleibt dauerhaft im Flash gespeichert.
+- Bei Auth-Fehler kann das HM-10 die Verbindung nicht aktiv trennen; die App übernimmt das und zeigt die Fehlermeldung an.
+- Gerätenamen werden auf 12 Zeichen begrenzt (HM-10-Firmware-Limit).
+- Getestete Firmware: v5xx.
+
+---
+
 ## Voraussetzungen
 
 ### ESP32
@@ -482,13 +457,11 @@ void loop() {
 - **Arduino IDE:** 2.x empfohlen
 - **ESP32-Paket:** Boardverwalter → `esp32` von Espressif
 
-### ESP8266 (optional HM-10 für BLE)
+### ESP8266
 
-- **Board:** ESP32 (beliebiges Modell)
+- **Board:** ESP8266 (beliebiges Modell)
 - **Arduino IDE:** 2.x empfohlen
 - **ESP8266-Paket:** Boardverwalter → `esp8266` von Community
-- **Bibliothek:** `SoftwareSerial` (im Arduino IDE vorinstalliert)
-- **Modul:** HM-10 BLE-Modul (CC2540 / CC2541 Chip, Firmware v5xx)
 
 ### Arduino Uno / Nano + HM-10
 
