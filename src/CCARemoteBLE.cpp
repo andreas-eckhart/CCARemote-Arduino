@@ -98,6 +98,8 @@ void CCARemoteBLE::begin() {
   Serial.begin(_serialBaudRate);
   Serial.println("\nCCA Remote startet (BLE)...");
   Serial.println("Geraetename: " + deviceName);
+  if (debugMode == CCA_DEBUG_ALL)
+    Serial.println("[CCA] Lib: " CCA_LIB_VERSION "  |  Protokoll: " CCA_PROTOCOL_VERSION);
 
   BLEDevice::init(deviceName.c_str());
 
@@ -199,6 +201,8 @@ void CCARemoteBLE::begin() {
   Serial.println(F("\nCCA Remote startet (BLE/HM-10)..."));
   Serial.print(F("Geraetename: "));
   Serial.println(deviceName);
+  if (debugMode == CCA_DEBUG_ALL)
+    Serial.println(F("[CCA] Lib: " CCA_LIB_VERSION "  |  Protokoll: " CCA_PROTOCOL_VERSION));
 
   _serial = new SoftwareSerial(_rxPin, _txPin);
   _serial->begin(_baudRate);
