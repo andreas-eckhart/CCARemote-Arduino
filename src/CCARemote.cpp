@@ -10,9 +10,7 @@
 #include "CCARemoteBase.h"
 
 // ================================================================
-#if defined(__AVR__)
-// ================================================================
-//  AVR (Uno/Nano)
+//  Einheitliche Implementierung für alle Plattformen (flat arrays)
 // ================================================================
 
 CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsigned long baudRate) {
@@ -193,6 +191,7 @@ void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
     _watchdogCount++;
   }
 }
+
 void CCARemote::_checkWatchdogs() {
   unsigned long now = millis();
   for (uint8_t i = 0; i < _watchdogCount; i++) {
@@ -204,145 +203,13 @@ void CCARemote::_checkWatchdogs() {
 }
 
 // ================================================================
-#else
-// ================================================================
-//  ESP32 / andere – std::function + std::map
-// ================================================================
-
-CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsigned long baudRate) {
-  deviceName      = prefix + name;
-  commandReceived = false;
-  lastCommand     = "";
-  debugMode       = debugLevel;
-  _serialBaudRate = baudRate;
-  _pendingResync  = false;
-  // Handshake-Keys vorinitialisieren (werden bei jedem Connect gesendet)
-  displayValues["protocol"]   = CCA_PROTOCOL_VERSION;
-  displayValues["platform"]   = CCA_PLATFORM;
-  displayValues["libVersion"] = CCA_LIB_VERSION;
-}
-
-void CCARemote::onCommand(String cmd, std::function<void()> callback) {
-  commands[cmd] = callback;
-  Serial.println("Befehl registriert: " + cmd);
-}
-
-void CCARemote::onCommand(String cmd, std::function<void(String)> callback) {
-  commandsWithValue[cmd] = callback;
-  Serial.println("Befehl registriert: " + cmd + " (mit Wert)");
-}
-
-void CCARemote::receive(String cmd, int& var) {
-  commandsWithValue[cmd] = [this, cmd, &var](String value) {
-    var = value.toInt();
-    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
-  };
-  Serial.println("Variable gebunden: " + cmd + " (int)");
-}
-
-void CCARemote::receive(String cmd, bool& var) {
-  commandsWithValue[cmd] = [this, cmd, &var](String value) {
-    var = (value == "1" || value == "true" || value == "on");
-    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
-  };
-  Serial.println("Variable gebunden: " + cmd + " (bool)");
-}
-
-void CCARemote::receive(String cmd, float& var) {
-  commandsWithValue[cmd] = [this, cmd, &var](String value) {
-    var = value.toFloat();
-    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
-  };
-  Serial.println("Variable gebunden: " + cmd + " (float)");
-}
-
-void CCARemote::receive(String cmd, String& var) {
-  commandsWithValue[cmd] = [this, cmd, &var](String value) {
-    var = value;
-    if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + cmd + " = " + value);
-  };
-  Serial.println("Variable gebunden: " + cmd + " (String)");
-}
-
-void CCARemote::receiveColor(String cmd, int& r, int& g, int& b) {
-  commandsWithValue[cmd] = [this, cmd, &r, &g, &b](String value) {
-    int s1 = value.indexOf(';');
-    int s2 = value.indexOf(';', s1 + 1);
-    if (s1 > 0 && s2 > s1) {
-      r = value.substring(0, s1).toInt();
-      g = value.substring(s1 + 1, s2).toInt();
-      b = value.substring(s2 + 1).toInt();
-    }
-    if (debugMode & CCA_DEBUG_IN)
-      Serial.println("[CCA] IN  " + cmd + " = R:" + r + " G:" + g + " B:" + b);
-  };
-  Serial.println("Farbe gebunden: " + cmd + " (r,g,b)");
-}
-
-void CCARemote::processCommand(String cmd) {
-  int start = 0;
-  while (start <= (int)cmd.length()) {
-    int commaPos = cmd.indexOf(',', start);
-    String part = (commaPos < 0) ? cmd.substring(start) : cmd.substring(start, commaPos);
-    part.trim();
-
-    if (part.length() > 0) {
-      int colonPos = part.indexOf(':');
-      if (colonPos > 0) {
-        String command = part.substring(0, colonPos);
-        String value   = part.substring(colonPos + 1);
-        if (commandsWithValue.count(command) > 0) {
-          commandsWithValue[command](value);
-          if (_watchdogLast.count(command)) _watchdogLast[command] = millis();
-        } else {
-          Serial.println("Unbekannter Befehl: " + command);
-        }
-      } else {
-        if (commands.count(part) > 0) {
-          if (debugMode & CCA_DEBUG_IN) Serial.println("[CCA] IN  " + part + " (kein Wert)");
-          commands[part]();
-          if (_watchdogLast.count(part)) _watchdogLast[part] = millis();
-        } else {
-          Serial.println("Unbekannter Befehl: " + part);
-        }
-      }
-    }
-
-    if (commaPos < 0) break;
-    start = commaPos + 1;
-  }
-}
-
-void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
-  _watchdogTimeouts[cmd] = timeoutMs;
-  _watchdogLast[cmd]     = millis();
-}
-void CCARemote::_checkWatchdogs() {
-  unsigned long now = millis();
-  for (auto& kv : _watchdogTimeouts) {
-    if (now - _watchdogLast[kv.first] >= kv.second) {
-      _watchdogLast[kv.first] = now;
-      processCommand(kv.first + ":0");
-    }
-  }
-}
-
-#endif // __AVR__
-
-// ================================================================
-//  Gemeinsame Methoden (beide Plattformen)
+//  Gemeinsame Methoden
 // ================================================================
 
 void CCARemote::_resyncDisplay() {
-#if defined(__AVR__)
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
   }
-#else
-  for (auto const& pair : displayValues) {
-    sendInternal(pair.first, pair.second);
-  }
-#endif
 }
 
 void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
@@ -350,17 +217,16 @@ void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
   if (mode != CCA_DEBUG_OFF) {
     Serial.begin(baudRate);
 #if defined(ESP8266)
-    delay(3000);  // ESP8266: warten bis Serial Monitor nach Upload/Power-On bereit ist
+    delay(3000);
 #endif
   }
-  if (mode == CCA_DEBUG_OFF)  Serial.println("[CCA] Debug-Modus deaktiviert");
-  if (mode == CCA_DEBUG_IN)   Serial.println("[CCA] Debug-Modus: nur IN");
-  if (mode == CCA_DEBUG_OUT)  Serial.println("[CCA] Debug-Modus: nur OUT");
-  if (mode == CCA_DEBUG_ALL)  Serial.println("[CCA] Debug-Modus: IN + OUT");
+  if (mode == CCA_DEBUG_OFF)  Serial.println(F("[CCA] Debug-Modus deaktiviert"));
+  if (mode == CCA_DEBUG_IN)   Serial.println(F("[CCA] Debug-Modus: nur IN"));
+  if (mode == CCA_DEBUG_OUT)  Serial.println(F("[CCA] Debug-Modus: nur OUT"));
+  if (mode == CCA_DEBUG_ALL)  Serial.println(F("[CCA] Debug-Modus: IN + OUT"));
 }
 
 void CCARemote::_sendIfChanged(String key, String value) {
-#if defined(__AVR__)
   bool found = false;
   for (uint8_t i = 0; i < _displayCount; i++) {
     if (_display[i].key == key) {
@@ -375,11 +241,6 @@ void CCARemote::_sendIfChanged(String key, String value) {
     _display[_displayCount].value = value;
     _displayCount++;
   }
-#else
-  auto it = displayValues.find(key);
-  if (it != displayValues.end() && it->second == value) return;
-  displayValues[key] = value;
-#endif
   if (debugMode & CCA_DEBUG_OUT) {
     Serial.print(F("[CCA] OUT "));
     Serial.print(key);

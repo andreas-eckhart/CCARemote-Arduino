@@ -3,7 +3,7 @@
  *
  * Platform detection (automatic):
  *   AVR (Uno/Nano) → fixed arrays + function pointers (no std::function/map)
- *   ESP32 / other  → std::function + std::map (full C++ standard library)
+ *   ESP32 / other  → same flat-array approach, larger default limits
  *
  * Based on the diploma thesis by L. Eder and E. Duyar (HTL Anichstraße)
  * Extended by A. Eckhart with kind permission of the original authors.
@@ -31,22 +31,35 @@ enum CCADebugMode {
 };
 
 // ================================================================
+//  Maximale Array-Größen
+//  AVR: klein (RAM-Mangel), ESP32/andere: größer
+// ================================================================
 #if defined(__AVR__)
-// ================================================================
-//  AVR (Uno/Nano) – kein std::function, keine std::map
-//  Maximale Anzahl registrierbarer Callbacks / Variablen
-// ================================================================
-#ifndef CCA_MAX_CALLBACKS
-  #define CCA_MAX_CALLBACKS 8
-#endif
-#ifndef CCA_MAX_RECEIVERS
-  #define CCA_MAX_RECEIVERS 8
-#endif
-#ifndef CCA_MAX_DISPLAY
-  #define CCA_MAX_DISPLAY 8
-#endif
-#ifndef CCA_MAX_COLOR
-  #define CCA_MAX_COLOR 4
+  #ifndef CCA_MAX_CALLBACKS
+    #define CCA_MAX_CALLBACKS 8
+  #endif
+  #ifndef CCA_MAX_RECEIVERS
+    #define CCA_MAX_RECEIVERS 8
+  #endif
+  #ifndef CCA_MAX_DISPLAY
+    #define CCA_MAX_DISPLAY 8
+  #endif
+  #ifndef CCA_MAX_COLOR
+    #define CCA_MAX_COLOR 4
+  #endif
+#else
+  #ifndef CCA_MAX_CALLBACKS
+    #define CCA_MAX_CALLBACKS 16
+  #endif
+  #ifndef CCA_MAX_RECEIVERS
+    #define CCA_MAX_RECEIVERS 16
+  #endif
+  #ifndef CCA_MAX_DISPLAY
+    #define CCA_MAX_DISPLAY 16
+  #endif
+  #ifndef CCA_MAX_COLOR
+    #define CCA_MAX_COLOR 8
+  #endif
 #endif
 
 struct _CCACmd  { String key; void (*fn)(); };
@@ -59,19 +72,8 @@ struct _CCARecv {
 };
 
 struct _CCAColorRecv { String key; int* r; int* g; int* b; };
-
-struct _CCADisplay  { String key; String value; };
-struct _CCAWatchdog { String key; unsigned long timeoutMs; unsigned long lastMs; };
-
-// ================================================================
-#else
-// ================================================================
-//  ESP32 / andere – volle C++ Standardbibliothek
-// ================================================================
-#include <functional>
-#include <map>
-
-#endif // __AVR__
+struct _CCADisplay   { String key; String value; };
+struct _CCAWatchdog  { String key; unsigned long timeoutMs; unsigned long lastMs; };
 
 // ================================================================
 //  Gemeinsame Basisklasse
@@ -86,13 +88,8 @@ class CCARemote {
     virtual void handle()      = 0;
     virtual bool isConnected() = 0;
 
-#if defined(__AVR__)
     void onCommand(String cmd, void (*callback)());
     void onCommand(String cmd, void (*callback)(String));
-#else
-    void onCommand(String cmd, std::function<void()> callback);
-    void onCommand(String cmd, std::function<void(String)> callback);
-#endif
 
     void receive(String cmd, int&    var);
     void receive(String cmd, bool&   var);
@@ -123,16 +120,10 @@ class CCARemote {
     bool _pendingResync;
     virtual void sendInternal(String key, String value) = 0;
 
-    // Display-Werte: auf AVR fixes Array, sonst std::map
-#if defined(__AVR__)
     _CCADisplay _display[CCA_MAX_DISPLAY];
     uint8_t     _displayCount;
-#else
-    std::map<String, String> displayValues;
-#endif
 
   private:
-#if defined(__AVR__)
     _CCACmd       _cmds[CCA_MAX_CALLBACKS];
     _CCACmdV      _cmdsV[CCA_MAX_CALLBACKS];
     uint8_t       _cmdCount;
@@ -143,12 +134,6 @@ class CCARemote {
     uint8_t       _colorRecvCount;
     _CCAWatchdog  _watchdogList[CCA_MAX_RECEIVERS];
     uint8_t       _watchdogCount;
-#else
-    std::map<String, std::function<void()>>       commands;
-    std::map<String, std::function<void(String)>> commandsWithValue;
-    std::map<String, unsigned long>               _watchdogTimeouts;
-    std::map<String, unsigned long>               _watchdogLast;
-#endif
 };
 
 #endif // CCAREMOTE_BASE_H
