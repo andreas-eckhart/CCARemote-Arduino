@@ -131,7 +131,13 @@ void CCARemoteBLE::begin() {
 
   Serial.println("BLE Server laeuft!");
   if (blePassword.length() > 0) {
-    Serial.println("Passwort aktiv: AUTH-Befehl erforderlich.");
+    Serial.print("BLE Passwort: ");
+    if (debugMode == CCA_DEBUG_ALL) {
+      Serial.println(blePassword);
+    } else {
+      for (unsigned int i = 0; i < blePassword.length(); i++) Serial.print('*');
+      Serial.println();
+    }
   }
   Serial.println("Warte auf Verbindung...\n");
 }
@@ -221,13 +227,19 @@ void CCARemoteBLE::begin() {
   // Puffer nach Reset leeren
   while (_serial->available()) _serial->read();
 
-  Serial.print(F("HM-10 bereit! (RX="));
+  Serial.print(F("HM-10 BLE-Modul bereit! (RX="));
   Serial.print(_rxPin);
   Serial.print(F(", TX="));
   Serial.print(_txPin);
   Serial.println(')');
   if (_blePassword.length() > 0) {
-    Serial.println(F("Passwort aktiv: AUTH-Befehl erforderlich."));
+    Serial.print(F("BLE Passwort: "));
+    if (debugMode == CCA_DEBUG_ALL) {
+      Serial.println(_blePassword);
+    } else {
+      for (unsigned int i = 0; i < _blePassword.length(); i++) Serial.print('*');
+      Serial.println();
+    }
   }
   Serial.println(F("Warte auf Verbindung...\n"));
 }

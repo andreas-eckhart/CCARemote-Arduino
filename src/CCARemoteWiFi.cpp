@@ -80,12 +80,17 @@ void CCARemoteWiFi::begin() {
   wifiEnabled = true;
   Serial.print("WiFi AP: ");
   Serial.println(deviceName);
+  if (_password.length() > 0) {
+    Serial.print("WiFi Passwort: ");
+    if (debugMode == CCA_DEBUG_ALL) {
+      Serial.println(_password);
+    } else {
+      for (unsigned int i = 0; i < _password.length(); i++) Serial.print('*');
+      Serial.println();
+    }
+  }
   Serial.print("IP-Adresse: ");
   Serial.println(WiFi.softAPIP());
-  if (_password.length() > 0) {
-    Serial.print("Passwort: ");
-    Serial.println(_password);
-  }
 
   _tcpServer = new WiFiServer(_port);
   _tcpServer->begin();
