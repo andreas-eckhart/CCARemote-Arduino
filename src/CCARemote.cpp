@@ -28,6 +28,10 @@ CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsign
   _displayCount    = 0;
   _pendingResync   = false;
   _watchdogCount   = 0;
+  // Handshake-Keys vorinitialisieren (werden bei jedem Connect gesendet)
+  _display[_displayCount++] = { "protocol",   CCA_PROTOCOL_VERSION };
+  _display[_displayCount++] = { "platform",   CCA_PLATFORM         };
+  _display[_displayCount++] = { "libVersion", CCA_LIB_VERSION      };
 }
 
 void CCARemote::onCommand(String cmd, void (*callback)()) {
@@ -212,6 +216,10 @@ CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsign
   debugMode       = debugLevel;
   _serialBaudRate = baudRate;
   _pendingResync  = false;
+  // Handshake-Keys vorinitialisieren (werden bei jedem Connect gesendet)
+  displayValues["protocol"]   = CCA_PROTOCOL_VERSION;
+  displayValues["platform"]   = CCA_PLATFORM;
+  displayValues["libVersion"] = CCA_LIB_VERSION;
 }
 
 void CCARemote::onCommand(String cmd, std::function<void()> callback) {
@@ -326,10 +334,6 @@ void CCARemote::_checkWatchdogs() {
 // ================================================================
 
 void CCARemote::_resyncDisplay() {
-  // Handshake-Keys immer zuerst senden (protocol, platform, libVersion)
-  sendInternal("protocol",   CCA_PROTOCOL_VERSION);
-  sendInternal("platform",   CCA_PLATFORM);
-  sendInternal("libVersion", CCA_LIB_VERSION);
 #if defined(__AVR__)
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
