@@ -113,7 +113,7 @@ class CCARemote {
     CCADebugMode  debugMode;
     unsigned long _serialBaudRate;
 
-    void processCommand(String cmd);
+    void processCommand(const char* cmd);
     void _resyncDisplay();
     void _sendIfChanged(String key, String value);
     void _checkWatchdogs();
@@ -134,6 +134,7 @@ class CCARemote {
     uint8_t       _colorRecvCount;
     _CCAWatchdog  _watchdogList[CCA_MAX_RECEIVERS];
     uint8_t       _watchdogCount;
+    uint16_t      _watchdogFired;  // bit i = watchdog i has fired, re-armed on real data
 };
 
 #endif // CCAREMOTE_BASE_H

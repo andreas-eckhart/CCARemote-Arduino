@@ -26,6 +26,7 @@ CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsign
   _displayCount    = 0;
   _pendingResync   = false;
   _watchdogCount   = 0;
+  _watchdogFired   = 0;
   // Handshake-Keys vorinitialisieren (werden bei jedem Connect gesendet)
   _display[_displayCount++] = { "protocol",   CCA_PROTOCOL_VERSION };
   _display[_displayCount++] = { "platform",   CCA_PLATFORM         };
@@ -81,113 +82,150 @@ void CCARemote::receiveColor(String cmd, int& r, int& g, int& b) {
   }
 }
 
-void CCARemote::processCommand(String cmd) {
-  int start = 0;
-  while (start <= (int)cmd.length()) {
-    int commaPos = cmd.indexOf(',', start);
-    String part = (commaPos < 0) ? cmd.substring(start) : cmd.substring(start, commaPos);
-    part.trim();
+void CCARemote::processCommand(const char* cmd) {
+  const char* p = cmd;
+  while (*p) {
+    const char* comma   = strchr(p, ',');
+    const char* partEnd = comma ? comma : (p + strlen(p));
 
-    if (part.length() > 0) {
-      int colonPos = part.indexOf(':');
-      if (colonPos > 0) {
-        String key   = part.substring(0, colonPos);
-        String value = part.substring(colonPos + 1);
+    while (p < partEnd && *p == ' ') p++;
+    while (partEnd > p && *(partEnd - 1) == ' ') partEnd--;
 
-        // Color-Bindings prüfen
-        bool found = false;
-        for (uint8_t i = 0; i < _colorRecvCount; i++) {
-          if (_colorRecv[i].key == key) {
-            int s1 = value.indexOf(';');
-            int s2 = value.indexOf(';', s1 + 1);
-            if (s1 > 0 && s2 > s1) {
-              *_colorRecv[i].r = value.substring(0, s1).toInt();
-              *_colorRecv[i].g = value.substring(s1 + 1, s2).toInt();
-              *_colorRecv[i].b = value.substring(s2 + 1).toInt();
+    uint8_t partLen = (uint8_t)(partEnd - p);
+    if (partLen == 0) { if (!comma) break; p = comma + 1; continue; }
+
+    // Doppelpunkt suchen
+    const char* colon = nullptr;
+    for (const char* c = p; c < partEnd; c++) { if (*c == ':') { colon = c; break; } }
+
+    if (colon && colon > p) {
+      const char* keyStr = p;
+      uint8_t     keyLen = (uint8_t)(colon - p);
+      const char* valStr = colon + 1;
+      uint8_t     valLen = (uint8_t)(partEnd - valStr);
+      bool found = false;
+
+      // Color-Bindings
+      for (uint8_t i = 0; i < _colorRecvCount; i++) {
+        if (_colorRecv[i].key.length() == keyLen &&
+            memcmp(_colorRecv[i].key.c_str(), keyStr, keyLen) == 0) {
+          const char* s1 = (const char*)memchr(valStr, ';', valLen);
+          if (s1 && s1 > valStr) {
+            const char* s2 = (const char*)memchr(s1 + 1, ';', valLen - (uint8_t)(s1 + 1 - valStr));
+            if (s2) {
+              *_colorRecv[i].r = atoi(valStr);
+              *_colorRecv[i].g = atoi(s1 + 1);
+              *_colorRecv[i].b = atoi(s2 + 1);
             }
+          }
+          if (debugMode & CCA_DEBUG_IN) {
+            Serial.print(F("[CCA] IN  "));
+            Serial.write(reinterpret_cast<const uint8_t*>(keyStr), keyLen);
+            Serial.print(F(" = R:")); Serial.print(*_colorRecv[i].r);
+            Serial.print(F(" G:"));   Serial.print(*_colorRecv[i].g);
+            Serial.print(F(" B:"));   Serial.println(*_colorRecv[i].b);
+          }
+          found = true; break;
+        }
+      }
+
+      // Variable-Bindings
+      if (!found) {
+        for (uint8_t i = 0; i < _recvCount; i++) {
+          if (_recv[i].key.length() == keyLen &&
+              memcmp(_recv[i].key.c_str(), keyStr, keyLen) == 0) {
             if (debugMode & CCA_DEBUG_IN) {
-              Serial.print(F("[CCA] IN  ")); Serial.print(key);
-              Serial.print(F(" = R:")); Serial.print(*_colorRecv[i].r);
-              Serial.print(F(" G:"));   Serial.print(*_colorRecv[i].g);
-              Serial.print(F(" B:"));   Serial.println(*_colorRecv[i].b);
+              Serial.print(F("[CCA] IN  "));
+              Serial.write(reinterpret_cast<const uint8_t*>(keyStr), keyLen);
+              Serial.print(F(" = "));
+              Serial.write(reinterpret_cast<const uint8_t*>(valStr), valLen);
+              Serial.println();
             }
-            found = true;
+            switch (_recv[i].type) {
+              case _CCARecv::INT_T:
+                *((int*)_recv[i].ptr) = atoi(valStr); break;
+              case _CCARecv::BOOL_T:
+                *((bool*)_recv[i].ptr) =
+                  (valLen == 1 && valStr[0] == '1') ||
+                  (valLen == 4 && memcmp(valStr, "true", 4) == 0) ||
+                  (valLen == 2 && memcmp(valStr, "on",   2) == 0); break;
+              case _CCARecv::FLOAT_T:
+                *((float*)_recv[i].ptr) = atof(valStr); break;
+              case _CCARecv::STRING_T:
+                *((String*)_recv[i].ptr) = String(valStr).substring(0, valLen); break;
+            }
+            found = true; break;
+          }
+        }
+      }
+
+      // Callback mit Wert
+      if (!found) {
+        for (uint8_t i = 0; i < _cmdVCount; i++) {
+          if (_cmdsV[i].key.length() == keyLen &&
+              memcmp(_cmdsV[i].key.c_str(), keyStr, keyLen) == 0) {
+            if (debugMode & CCA_DEBUG_IN) {
+              Serial.print(F("[CCA] IN  "));
+              Serial.write(reinterpret_cast<const uint8_t*>(keyStr), keyLen);
+              Serial.print(F(" = "));
+              Serial.write(reinterpret_cast<const uint8_t*>(valStr), valLen);
+              Serial.println();
+            }
+            _cmdsV[i].fn(String(valStr).substring(0, valLen));
+            found = true; break;
+          }
+        }
+      }
+
+      if (found) {
+        for (uint8_t w = 0; w < _watchdogCount; w++) {
+          if (_watchdogList[w].key.length() == keyLen &&
+              memcmp(_watchdogList[w].key.c_str(), keyStr, keyLen) == 0) {
+            _watchdogList[w].lastMs = millis();
+            _watchdogFired &= ~(1u << w);
             break;
           }
-        }
-        // Variable-Bindings prüfen
-        if (!found) {
-          for (uint8_t i = 0; i < _recvCount; i++) {
-            if (_recv[i].key == key) {
-              if (debugMode & CCA_DEBUG_IN) {
-                Serial.print(F("[CCA] IN  ")); Serial.print(key);
-                Serial.print(F(" = "));        Serial.println(value);
-              }
-              switch (_recv[i].type) {
-                case _CCARecv::INT_T:
-                  *((int*)_recv[i].ptr) = value.toInt(); break;
-                case _CCARecv::BOOL_T:
-                  *((bool*)_recv[i].ptr) = (value == "1" || value == "true" || value == "on"); break;
-                case _CCARecv::FLOAT_T:
-                  *((float*)_recv[i].ptr) = value.toFloat(); break;
-                case _CCARecv::STRING_T:
-                  *((String*)_recv[i].ptr) = value; break;
-              }
-              found = true;
-              break;
-            }
-          }
-        }
-        // Callback mit Wert prüfen
-        if (!found) {
-          for (uint8_t i = 0; i < _cmdVCount; i++) {
-            if (_cmdsV[i].key == key) {
-              if (debugMode & CCA_DEBUG_IN) {
-                Serial.print(F("[CCA] IN  ")); Serial.print(key);
-                Serial.print(F(" = "));        Serial.println(value);
-              }
-              _cmdsV[i].fn(value);
-              found = true;
-              break;
-            }
-          }
-        }
-        if (found) {
-          for (uint8_t w = 0; w < _watchdogCount; w++) {
-            if (_watchdogList[w].key == key) { _watchdogList[w].lastMs = millis(); break; }
-          }
-        } else {
-          Serial.print(F("Unbekannter Befehl: ")); Serial.println(key);
         }
       } else {
-        bool found = false;
-        for (uint8_t i = 0; i < _cmdCount; i++) {
-          if (_cmds[i].key == part) {
-            if (debugMode & CCA_DEBUG_IN) {
-              Serial.print(F("[CCA] IN  ")); Serial.print(part); Serial.println(F(" (kein Wert)"));
-            }
-            _cmds[i].fn();
-            found = true;
-            break;
+        Serial.print(F("Unbekannter Befehl: "));
+        Serial.write(reinterpret_cast<const uint8_t*>(keyStr), keyLen);
+        Serial.println();
+      }
+    } else {
+      // Befehl ohne Wert
+      bool found = false;
+      for (uint8_t i = 0; i < _cmdCount; i++) {
+        if (_cmds[i].key.length() == partLen &&
+            memcmp(_cmds[i].key.c_str(), p, partLen) == 0) {
+          if (debugMode & CCA_DEBUG_IN) {
+            Serial.print(F("[CCA] IN  "));
+            Serial.write(reinterpret_cast<const uint8_t*>(p), partLen);
+            Serial.println(F(" (kein Wert)"));
           }
+          _cmds[i].fn(); found = true; break;
         }
-        if (!found) { Serial.print(F("Unbekannter Befehl: ")); Serial.println(part); }
+      }
+      if (!found) {
+        Serial.print(F("Unbekannter Befehl: "));
+        Serial.write(reinterpret_cast<const uint8_t*>(p), partLen);
+        Serial.println();
       }
     }
 
-    if (commaPos < 0) break;
-    start = commaPos + 1;
+    if (!comma) break;
+    p = comma + 1;
   }
 }
 
 void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
   for (uint8_t i = 0; i < _watchdogCount; i++) {
-    if (_watchdogList[i].key == cmd) { _watchdogList[i].timeoutMs = timeoutMs; _watchdogList[i].lastMs = millis(); return; }
+    if (_watchdogList[i].key == cmd) { _watchdogList[i].timeoutMs = timeoutMs; _watchdogList[i].lastMs = millis(); _watchdogFired &= ~(1u << i); return; }
   }
   if (_watchdogCount < CCA_MAX_RECEIVERS) {
     _watchdogList[_watchdogCount].key       = cmd;
     _watchdogList[_watchdogCount].timeoutMs = timeoutMs;
     _watchdogList[_watchdogCount].lastMs    = millis();
+    _watchdogFired &= ~(1u << _watchdogCount);
     _watchdogCount++;
   }
 }
@@ -195,9 +233,34 @@ void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
 void CCARemote::_checkWatchdogs() {
   unsigned long now = millis();
   for (uint8_t i = 0; i < _watchdogCount; i++) {
-    if (now - _watchdogList[i].lastMs >= _watchdogList[i].timeoutMs) {
-      _watchdogList[i].lastMs = now;
-      processCommand(_watchdogList[i].key + ":0");
+    if ((_watchdogFired >> i) & 1u) continue;
+    if (now - _watchdogList[i].lastMs < _watchdogList[i].timeoutMs) continue;
+    _watchdogFired |= (1u << i);
+    const String& key = _watchdogList[i].key;
+    for (uint8_t j = 0; j < _recvCount; j++) {
+      if (_recv[j].key == key) {
+        switch (_recv[j].type) {
+          case _CCARecv::INT_T:    *((int*)   _recv[j].ptr) = 0;     break;
+          case _CCARecv::BOOL_T:   *((bool*)  _recv[j].ptr) = false; break;
+          case _CCARecv::FLOAT_T:  *((float*) _recv[j].ptr) = 0.0f;  break;
+          case _CCARecv::STRING_T: *((String*)_recv[j].ptr) = "";    break;
+        }
+        if (debugMode & CCA_DEBUG_IN) { Serial.print(F("[CCA] WD  ")); Serial.println(key); }
+        break;
+      }
+    }
+    for (uint8_t j = 0; j < _colorRecvCount; j++) {
+      if (_colorRecv[j].key == key) {
+        *_colorRecv[j].r = 0; *_colorRecv[j].g = 0; *_colorRecv[j].b = 0;
+        if (debugMode & CCA_DEBUG_IN) { Serial.print(F("[CCA] WD  ")); Serial.println(key); }
+        break;
+      }
+    }
+    for (uint8_t j = 0; j < _cmdVCount; j++) {
+      if (_cmdsV[j].key == key) { _cmdsV[j].fn("0"); break; }
+    }
+    for (uint8_t j = 0; j < _cmdCount; j++) {
+      if (_cmds[j].key == key) { _cmds[j].fn(); break; }
     }
   }
 }

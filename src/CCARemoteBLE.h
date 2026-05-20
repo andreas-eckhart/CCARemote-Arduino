@@ -103,7 +103,7 @@ class CCARemoteBLE : public CCARemote {
         _resyncDisplay();
       }
       if (commandReceived) {
-        processCommand(lastCommand);
+        processCommand(lastCommand.c_str());
         commandReceived = false;
       }
     }
@@ -185,6 +185,7 @@ class CCARemoteBLE : public CCARemote {
         }
 
         if (value.startsWith("ping:")) return;
+        if (value.startsWith("disconnect:")) return;
 
         parent->lastCommand     = value;
         parent->commandReceived = true;
@@ -426,7 +427,7 @@ class CCARemoteBLE : public CCARemote {
         return;
       }
 
-      processCommand(String(raw));
+      processCommand(raw);
     }
 
     void _sendRaw(String msg) {
