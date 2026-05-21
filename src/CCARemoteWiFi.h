@@ -143,7 +143,7 @@ class CCARemoteWiFi : public CCARemote {
             } else if (_tcpBuf.startsWith("ping:")) {
               // ping ist ein interner Heartbeat – kein processCommand
             } else if (_tcpBuf.length() > 0) {
-              processCommand(_tcpBuf);
+              processCommand(_tcpBuf.c_str());
             }
             _tcpBuf = "";
           } else {
