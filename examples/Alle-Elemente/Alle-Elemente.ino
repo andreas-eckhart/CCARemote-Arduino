@@ -21,7 +21,7 @@
 #include <CCARemote.h>
 
 const int LED_BUTTON = 25;  // LED für Button-Element
-const int LED_SLIDER = 18;  // LED für Slider-Element (PWM-fähiger Pin)
+const int LED_SLIDER =  4;  // LED für Slider-Element (PWM-fähiger Pin)
 const int LED_SWITCH = 21;  // LED für Switch-Element
 const int LED_INPUT  = 22;  // LED für Input-Element
 const int PIN_R      = 26;  // PWM-Pin für RGB-LED Rot   (Color-Picker)

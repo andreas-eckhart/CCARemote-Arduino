@@ -84,6 +84,17 @@ Um zwischen BLE und WiFi zu wechseln, nur `CONNECTION` ändern – der restliche
 | `HM10_RX_PIN` | `10` | RX-Pin des HM-10-Moduls (nur Arduino Uno/Nano) |
 | `HM10_TX_PIN` | `11` | TX-Pin des HM-10-Moduls (nur Arduino Uno/Nano) |
 | `HM10_BAUD` | `9600` | Baudrate des HM-10-Moduls (nur Arduino Uno/Nano) |
+| `CCA_MAX_CALLBACKS` | `16` / `8` (AVR) | Max. Anzahl `onCommand()`-Handler |
+| `CCA_MAX_RECEIVERS` | `16` / `8` (AVR) | Max. Anzahl `receive()`-Bindungen |
+| `CCA_MAX_DISPLAY` | `16` / `8` (AVR) | Max. Anzahl gecachter `send()`-Werte |
+| `CCA_MAX_COLOR` | `8` / `4` (AVR) | Max. Anzahl `receiveColor()`-Bindungen |
+
+> **Kapazität erhöhen:** Wird die Standardgrenze überschritten, werden weitere Bindungen still ignoriert. Für komplexe Sketches vor `#include <CCARemote.h>` erhöhen:
+> ```cpp
+> #define CCA_MAX_RECEIVERS 24
+> #define CCA_MAX_CALLBACKS 24
+> #include <CCARemote.h>
+> ```
 
 ---
 
@@ -225,6 +236,7 @@ remote.send("spannung", 3.7, 2);  // "3.70"
 | `send(key, int)` | Ganzzahl |
 | `send(key, float)` | Dezimalzahl (1 Nachkommastelle) |
 | `send(key, float, int)` | Dezimalzahl mit gewünschten Nachkommastellen |
+| `send(String)` | Rohformat `"key:value"` – für fortgeschrittene Anwendungsfälle |
 
 > **Hinweis – Label-Element:** Neben Display-, Gauge-, Chart- und LED-Elementen kann auch das **Label**-Element Werte empfangen. `remote.send("label1", "Text")` aktualisiert den angezeigten Text des Labels dynamisch. Die Element-ID muss dazu im Label-Editor der App eingetragen sein.
 
@@ -317,9 +329,9 @@ remote.debug(CCA_DEBUG_OFF);    // Debug deaktivieren
 
 #include <CCARemote.h>
 
-const int LED_BUTTON = 18;
-const int LED_SLIDER = 19;
-const int LED_SWITCH = 5;
+const int LED_BUTTON =  2;  // ESP32-C3: GPIO 18/19 sind USB-Pins – bitte meiden
+const int LED_SLIDER =  4;  // PWM-fähig
+const int LED_SWITCH =  5;
 
 bool changeLed  = false;
 int  brightness = 0;
