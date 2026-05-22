@@ -15,9 +15,9 @@
 #define CCAREMOTE_BASE_H
 
 // Version der Bibliothek
-#define CCA_LIB_VERSION      "1.1.0"
+#define CCA_LIB_VERSION      "1.2.0"
 // Protokollversion – wird nur bei Breaking Changes erhöht
-#define CCA_PROTOCOL_VERSION "1"
+#define CCA_PROTOCOL_VERSION "2"
 #define CCA_PLATFORM         "arduino"
 
 #include <Arduino.h>
@@ -99,6 +99,15 @@ class CCARemote {
     void watchdog(String cmd, unsigned long timeoutMs);
 
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
+
+    void setProfile(const char* configString) {
+      if (_displayCount < CCA_MAX_DISPLAY)
+        _display[_displayCount++] = { "profileConfig", String(configString) };
+    }
+    void setProfile(const __FlashStringHelper* configString) {
+      if (_displayCount < CCA_MAX_DISPLAY)
+        _display[_displayCount++] = { "profileConfig", String(configString) };
+    }
 
     void send(String message);
     void send(String key, String value);
