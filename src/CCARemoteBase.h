@@ -102,6 +102,7 @@ class CCARemote {
 
     void send(String message);
     void send(String key, String value);
+    void send(String key, bool value);
     void send(String key, int value);
     void send(String key, float value);
     void send(String key, float value, int decimals);
