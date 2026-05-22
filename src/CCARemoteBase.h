@@ -105,7 +105,14 @@ class CCARemote {
     void send(String key, bool value);
     void send(String key, int value);
     void send(String key, float value);
+    void send(String key, double value);
     void send(String key, float value, int decimals);
+
+    void sendAlways(String key, String value);
+    void sendAlways(String key, int value);
+    void sendAlways(String key, float value);
+    void sendAlways(String key, double value);
+    void sendAlways(String key, float value, int decimals);
 
   protected:
     String        deviceName;
@@ -117,6 +124,7 @@ class CCARemote {
     void processCommand(const char* cmd);
     void _resyncDisplay();
     void _sendIfChanged(String key, String value);
+    void _sendAlways(String key, String value);
     void _checkWatchdogs();
     bool _pendingResync;
     virtual void sendInternal(String key, String value) = 0;

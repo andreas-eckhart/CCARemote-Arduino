@@ -313,6 +313,35 @@ void CCARemote::_sendIfChanged(String key, String value) {
   sendInternal(key, value);
 }
 
+void CCARemote::_sendAlways(String key, String value) {
+  bool found = false;
+  for (uint8_t i = 0; i < _displayCount; i++) {
+    if (_display[i].key == key) {
+      _display[i].value = value;
+      found = true;
+      break;
+    }
+  }
+  if (!found && _displayCount < CCA_MAX_DISPLAY) {
+    _display[_displayCount].key   = key;
+    _display[_displayCount].value = value;
+    _displayCount++;
+  }
+  if (debugMode & CCA_DEBUG_OUT) {
+    Serial.print(F("[CCA] OUT "));
+    Serial.print(key);
+    if (value.length() > 0) { Serial.print(F(" = ")); Serial.println(value); }
+    else                       Serial.println();
+  }
+  sendInternal(key, value);
+}
+
+void CCARemote::sendAlways(String key, String value)              { _sendAlways(key, value); }
+void CCARemote::sendAlways(String key, int value)                 { _sendAlways(key, String(value)); }
+void CCARemote::sendAlways(String key, float value)               { _sendAlways(key, String(value, 1)); }
+void CCARemote::sendAlways(String key, double value)              { _sendAlways(key, String((float)value, 1)); }
+void CCARemote::sendAlways(String key, float value, int decimals) { _sendAlways(key, String(value, decimals)); }
+
 void CCARemote::send(String message) {
   int colonPos = message.indexOf(':');
   if (colonPos > 0)
@@ -335,6 +364,10 @@ void CCARemote::send(String key, int value) {
 
 void CCARemote::send(String key, float value) {
   _sendIfChanged(key, String(value, 1));
+}
+
+void CCARemote::send(String key, double value) {
+  _sendIfChanged(key, String((float)value, 1));
 }
 
 void CCARemote::send(String key, float value, int decimals) {
