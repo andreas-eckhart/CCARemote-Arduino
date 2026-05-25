@@ -203,6 +203,35 @@ void loop() {
 
 ---
 
+### Zustand bei Reconnect synchronisieren (`resync`)
+
+Standardmäßig sendet die Library beim Verbinden nur Werte, die die MCU selbst via `send()`
+verschickt hat. Werte, die die App an die MCU schickt (Slider, Switch, Color Picker …),
+werden nach einem Reconnect **nicht** automatisch zurück zur App gesendet — die App würde
+den Startwert aus dem Profil anzeigen, auch wenn die MCU einen anderen Wert hält.
+
+Mit `resync = true` liest die Library beim Verbinden den **aktuellen Variablenwert** direkt
+aus und sendet ihn an die App:
+
+```cpp
+int   speed = 0;
+bool  power = false;
+int   r = 255, g = 0, b = 0;
+
+void setup() {
+  remote.begin();
+  remote.receive("speed",  speed,  true);         // resync bei Reconnect
+  remote.receive("power",  power,  true);         // resync bei Reconnect
+  remote.receiveColor("color1", r, g, b, true);   // resync bei Reconnect
+}
+```
+
+Die App zeigt nach jedem Reconnect den tatsächlichen MCU-Zustand — egal ob der Wert von
+der App gesetzt, intern geändert wurde oder nach einem Power Cycle auf den Sketch-Standardwert
+zurückgefallen ist.
+
+---
+
 ### `onCommand()` – Callback bei Empfang *(für komplexe Logik)*
 
 ```cpp

@@ -51,37 +51,37 @@ void CCARemote::onCommand(String cmd, void (*callback)(String)) {
   }
 }
 
-void CCARemote::receive(String cmd, int& var) {
+void CCARemote::receive(String cmd, int& var, bool resync) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
-    _recv[_recvCount++] = { cmd, _CCARecv::INT_T, &var };
+    _recv[_recvCount++] = { cmd, _CCARecv::INT_T, &var, resync };
     Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (int)"));
   }
 }
 
-void CCARemote::receive(String cmd, bool& var) {
+void CCARemote::receive(String cmd, bool& var, bool resync) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
-    _recv[_recvCount++] = { cmd, _CCARecv::BOOL_T, &var };
+    _recv[_recvCount++] = { cmd, _CCARecv::BOOL_T, &var, resync };
     Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (bool)"));
   }
 }
 
-void CCARemote::receive(String cmd, float& var) {
+void CCARemote::receive(String cmd, float& var, bool resync) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
-    _recv[_recvCount++] = { cmd, _CCARecv::FLOAT_T, &var };
+    _recv[_recvCount++] = { cmd, _CCARecv::FLOAT_T, &var, resync };
     Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (float)"));
   }
 }
 
-void CCARemote::receive(String cmd, String& var) {
+void CCARemote::receive(String cmd, String& var, bool resync) {
   if (_recvCount < CCA_MAX_RECEIVERS) {
-    _recv[_recvCount++] = { cmd, _CCARecv::STRING_T, &var };
+    _recv[_recvCount++] = { cmd, _CCARecv::STRING_T, &var, resync };
     Serial.print(F("Variable gebunden: ")); Serial.print(cmd); Serial.println(F(" (String)"));
   }
 }
 
-void CCARemote::receiveColor(String cmd, int& r, int& g, int& b) {
+void CCARemote::receiveColor(String cmd, int& r, int& g, int& b, bool resync) {
   if (_colorRecvCount < CCA_MAX_COLOR) {
-    _colorRecv[_colorRecvCount++] = { cmd, &r, &g, &b };
+    _colorRecv[_colorRecvCount++] = { cmd, &r, &g, &b, resync };
     Serial.print(F("Farbe gebunden: ")); Serial.print(cmd); Serial.println(F(" (r,g,b)"));
   }
 }
@@ -277,6 +277,27 @@ void CCARemote::_resyncDisplay() {
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
   }
+
+  for (uint8_t i = 0; i < _recvCount; i++) {
+    if (!_recv[i].resync) continue;
+    String val;
+    switch (_recv[i].type) {
+      case _CCARecv::INT_T:    val = String(*((int*)   _recv[i].ptr)); break;
+      case _CCARecv::BOOL_T:   val = *((bool*)_recv[i].ptr) ? "1" : "0"; break;
+      case _CCARecv::FLOAT_T:  val = String(*((float*) _recv[i].ptr), 1); break;
+      case _CCARecv::STRING_T: val = *((String*)_recv[i].ptr); break;
+    }
+    sendInternal(_recv[i].key, val);
+  }
+
+  for (uint8_t i = 0; i < _colorRecvCount; i++) {
+    if (!_colorRecv[i].resync) continue;
+    sendInternal(_colorRecv[i].key,
+      String(*_colorRecv[i].r) + ";" +
+      String(*_colorRecv[i].g) + ";" +
+      String(*_colorRecv[i].b));
+  }
+
 #if defined(__AVR__)
   if (_profileConfigPtr != nullptr) _sendProfileConfig();
 #endif

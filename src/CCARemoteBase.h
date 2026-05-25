@@ -69,9 +69,10 @@ struct _CCARecv {
   String key;
   enum Type : uint8_t { INT_T, BOOL_T, FLOAT_T, STRING_T } type;
   void* ptr;
+  bool resync;
 };
 
-struct _CCAColorRecv { String key; int* r; int* g; int* b; };
+struct _CCAColorRecv { String key; int* r; int* g; int* b; bool resync; };
 struct _CCADisplay   { String key; String value; };
 struct _CCAWatchdog  { String key; unsigned long timeoutMs; unsigned long lastMs; };
 
@@ -91,11 +92,11 @@ class CCARemote {
     void onCommand(String cmd, void (*callback)());
     void onCommand(String cmd, void (*callback)(String));
 
-    void receive(String cmd, int&    var);
-    void receive(String cmd, bool&   var);
-    void receive(String cmd, float&  var);
-    void receive(String cmd, String& var);
-    void receiveColor(String cmd, int& r, int& g, int& b);
+    void receive(String cmd, int&    var, bool resync = false);
+    void receive(String cmd, bool&   var, bool resync = false);
+    void receive(String cmd, float&  var, bool resync = false);
+    void receive(String cmd, String& var, bool resync = false);
+    void receiveColor(String cmd, int& r, int& g, int& b, bool resync = false);
     void watchdog(String cmd, unsigned long timeoutMs);
 
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
