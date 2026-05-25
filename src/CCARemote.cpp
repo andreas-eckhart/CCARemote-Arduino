@@ -27,6 +27,10 @@ CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsign
   _pendingResync   = false;
   _watchdogCount   = 0;
   _watchdogFired   = 0;
+#if defined(__AVR__)
+  _profileConfigPtr = nullptr;
+  _profileIsPgm     = false;
+#endif
   // Handshake-Keys vorinitialisieren (werden bei jedem Connect gesendet)
   _display[_displayCount++] = { "protocol",   CCA_PROTOCOL_VERSION };
   _display[_displayCount++] = { "platform",   CCA_PLATFORM         };
@@ -273,6 +277,9 @@ void CCARemote::_resyncDisplay() {
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
   }
+#if defined(__AVR__)
+  if (_profileConfigPtr != nullptr) _sendProfileConfig();
+#endif
 }
 
 void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {

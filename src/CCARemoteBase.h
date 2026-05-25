@@ -100,6 +100,17 @@ class CCARemote {
 
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
 
+    // AVR: pointer only – no RAM copy. ESP32/non-AVR: copy into _display as usual.
+#if defined(__AVR__)
+    void setProfile(const char* configString) {
+      _profileConfigPtr = configString;
+      _profileIsPgm     = false;
+    }
+    void setProfile(const __FlashStringHelper* configString) {
+      _profileConfigPtr = (const char*)configString;
+      _profileIsPgm     = true;
+    }
+#else
     void setProfile(const char* configString) {
       if (_displayCount < CCA_MAX_DISPLAY)
         _display[_displayCount++] = { "profileConfig", String(configString) };
@@ -108,6 +119,7 @@ class CCARemote {
       if (_displayCount < CCA_MAX_DISPLAY)
         _display[_displayCount++] = { "profileConfig", String(configString) };
     }
+#endif
 
     void send(String message);
     void send(String key, String value);
@@ -137,6 +149,13 @@ class CCARemote {
     void _checkWatchdogs();
     bool _pendingResync;
     virtual void sendInternal(String key, String value) = 0;
+#if defined(__AVR__)
+    // Streams profileConfig from PROGMEM/RAM without heap allocation.
+    // Overridden by platform-specific subclass (BLE/WiFi).
+    virtual void _sendProfileConfig() {}
+    const char* _profileConfigPtr;
+    bool        _profileIsPgm;
+#endif
 
     _CCADisplay _display[CCA_MAX_DISPLAY];
     uint8_t     _displayCount;

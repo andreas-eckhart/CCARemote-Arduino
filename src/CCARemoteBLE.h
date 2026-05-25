@@ -448,6 +448,20 @@ class CCARemoteBLE : public CCARemote {
     void _sendRaw(String msg) {
       if (_serial) _serial->print(msg);
     }
+
+#if defined(__AVR__)
+    // Streams profileConfig byte-by-byte – zero heap allocation.
+    // PROGMEM strings are read via Print::print(const __FlashStringHelper*).
+    void _sendProfileConfig() override {
+      if (!_connected || !_authenticated || !_serial) return;
+      _serial->print(F("profileConfig:"));
+      if (_profileIsPgm)
+        _serial->print((const __FlashStringHelper*)_profileConfigPtr);
+      else
+        _serial->print(_profileConfigPtr);
+      _serial->write('\n');
+    }
+#endif
 };
 
 #endif // ESP32

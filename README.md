@@ -452,6 +452,40 @@ void loop() {
 
 > **Hinweis für Klon-Module:** Viele günstige HM-10 Klon-Module haben TXD und RXD aus der Gegenperspektive beschriftet. Falls keine Verbindung zustande kommt, einfach die beiden Datenleitungen tauschen.
 
+### Remote-Profil auf Uno / Nano (`setProfile`)
+
+Der Arduino Uno und Nano verfügen nur über **2 KB SRAM**. Ein Remote-Profil mit wenigen Elementen erzeugt bereits einen Konfig-String von 300–600 Bytes. Wird dieser String direkt im RAM abgelegt, kann das den verfügbaren Speicher erschöpfen und zu sekündlichen Resets führen – der Arduino IDE-Compiler warnt dann mit:
+
+> *Wenig Arbeitsspeicher verfügbar, es können Stabilitätsprobleme auftreten.*
+
+**Lösung:** Den Profil-String mit `PROGMEM` im Flash (32 KB) ablegen und den passenden Cast verwenden:
+
+```cpp
+// Richtig: PROGMEM – belegt kein RAM
+const char PROFILE[] PROGMEM =
+  "v:2"
+  "|nm:MeinProfil"
+  "|sl:speed:0:255@0,0,200,60,0,0,200,60"
+  "|sw:enable@0,70,120,50,0,70,120,50";
+
+void setup() {
+  remote.begin();
+  remote.setProfile((const __FlashStringHelper*)PROFILE);
+}
+```
+
+Alternativ funktioniert auch das `F()`-Makro direkt im Aufruf:
+
+```cpp
+remote.setProfile(F("v:2|nm:MeinProfil|sl:speed:0:255@0,0,200,60,0,0,200,60"));
+```
+
+> **Wichtig:** Den Profil-String **niemals** aus einer lokalen Variable oder einem `String`-Objekt übergeben – der Pointer muss für die gesamte Laufzeit gültig bleiben. Globale `PROGMEM`-Konstanten und String-Literale (via `F()`) erfüllen diese Bedingung.
+
+> **ESP32 / ESP8266:** Auf diesen Plattformen sind `PROGMEM` und der Cast nicht erforderlich – `remote.setProfile(PROFILE)` funktioniert weiterhin wie gewohnt.
+
+---
+
 ### Weitere HM-10 Hinweise
 
 - **BLE-Name:** Der Gerätename muss bei einigen Klon-Modellen einmalig manuell per AT-Befehl gesetzt werden: `AT+NAMEMeinName` (kein Leerzeichen, kein Zeilenumbruch). Der Name bleibt dauerhaft im Flash gespeichert.
