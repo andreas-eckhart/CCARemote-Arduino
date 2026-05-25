@@ -114,10 +114,25 @@ class CCARemoteBLE : public CCARemote {
 
   protected:
     void sendInternal(String key, String value) override {
-      if (deviceConnected && authenticated && pDisplayChar != nullptr) {
-        String msg = key + ":" + value + "\n";
+      if (!deviceConnected || !authenticated || pDisplayChar == nullptr) return;
+      String msg = key + ":" + value + "\n";
+      // BLE notifications are capped at MTU-3 bytes per packet.
+      // For long messages (e.g. profileConfig) we chunk and send multiple
+      // notifications; the Flutter side reassembles them via _rxBuffer.
+      const size_t kChunk = 180;
+      if (msg.length() <= kChunk) {
         pDisplayChar->setValue(msg.c_str());
         pDisplayChar->notify();
+      } else {
+        size_t offset = 0;
+        while (offset < msg.length()) {
+          size_t end = min(offset + kChunk, msg.length());
+          String chunk = msg.substring(offset, end);
+          pDisplayChar->setValue(chunk.c_str());
+          pDisplayChar->notify();
+          offset = end;
+          if (offset < msg.length()) delay(10);
+        }
       }
     }
 
