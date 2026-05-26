@@ -450,15 +450,20 @@ class CCARemoteBLE : public CCARemote {
     }
 
 #if defined(__AVR__)
-    // Streams profileConfig byte-by-byte – zero heap allocation.
-    // PROGMEM strings are read via Print::print(const __FlashStringHelper*).
+    // Streams profileConfig in 20-byte chunks with 50 ms pauses so the HM-10
+    // internal buffer (~256 B) never fills faster than BLE can drain it.
     void _sendProfileConfig() override {
       if (!_connected || !_authenticated || !_serial) return;
       _serial->print(F("profileConfig:"));
-      if (_profileIsPgm)
-        _serial->print((const __FlashStringHelper*)_profileConfigPtr);
-      else
-        _serial->print(_profileConfigPtr);
+      const char* p = _profileConfigPtr;
+      uint8_t count = 0;
+      while (true) {
+        char c = _profileIsPgm ? (char)pgm_read_byte(p) : *p;
+        if (c == '\0') break;
+        _serial->write(c);
+        p++;
+        if (++count >= 20) { count = 0; delay(50); }
+      }
       _serial->write('\n');
     }
 #endif
