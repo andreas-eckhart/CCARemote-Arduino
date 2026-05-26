@@ -390,16 +390,17 @@ class CCARemoteBLE : public CCARemote {
       }
 
       if (_blePassword.length() > 0 && !_authenticated) {
-        String authExpected = "AUTH:" + _blePassword;
-        if (strstr(raw, authExpected.c_str()) != nullptr) {
-          _authenticated = true;
-          _pendingResync = true;
-          Serial.println(F("BLE Authentifizierung erfolgreich!"));
-          _sendRaw("AUTH:OK\n");
-        } else if (strstr(raw, "AUTH:") != nullptr) {
-          Serial.println(F("BLE Authentifizierung fehlgeschlagen!"));
-          _sendRaw("AUTH:FAIL\n");
-          _connected = false;
+        if (strncmp(raw, "AUTH:", 5) == 0) {
+          if (strcmp(raw + 5, _blePassword.c_str()) == 0) {
+            _authenticated = true;
+            _pendingResync = true;
+            Serial.println(F("BLE Authentifizierung erfolgreich!"));
+            _sendRaw("AUTH:OK\n");
+          } else {
+            Serial.println(F("BLE Authentifizierung fehlgeschlagen!"));
+            _sendRaw("AUTH:FAIL\n");
+            _connected = false;
+          }
         }
         return;
       }
