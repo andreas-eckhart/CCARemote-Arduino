@@ -26,16 +26,19 @@ const int PIN_G = 26;
 const int PIN_B = 27;
 
 // Farbvariablen – werden von remote.handle() automatisch aktualisiert
+// Startwert vorbelegen → wird beim Verbinden an die App zurückgesendet
 int r = 0;
 int g = 0;
-int b = 0;
+int b = 255;
 
 
 void setup() {
   remote.begin();
 
-  // Element-ID "color1" aus der App mit den drei Farbvariablen verknüpfen
-  remote.receiveColor("color1", r, g, b);
+  // Element-ID "color1" aus der App mit den drei Farbvariablen verknüpfen.
+  // resync=true: beim Verbinden sendet der ESP den aktuellen Farbwert an die
+  // App zurück, damit der Color Picker die voreingestellte Farbe anzeigt.
+  remote.receiveColor("color1", r, g, b, true);
 
   pinMode(PIN_R, OUTPUT);
   pinMode(PIN_G, OUTPUT);
