@@ -382,6 +382,10 @@ void CCARemote::send(String key, String value) {
   _sendIfChanged(key, value);
 }
 
+void CCARemote::send(String key, const char* value) {
+  _sendIfChanged(key, String(value));
+}
+
 void CCARemote::send(String key, bool value) {
   _sendIfChanged(key, value ? "1" : "0");
 }

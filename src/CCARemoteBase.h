@@ -124,6 +124,7 @@ class CCARemote {
 
     void send(String message);
     void send(String key, String value);
+    void send(String key, const char* value);
     void send(String key, bool value);
     void send(String key, int value);
     void send(String key, float value);
