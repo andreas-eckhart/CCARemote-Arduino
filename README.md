@@ -110,6 +110,7 @@ Um zwischen BLE und WiFi zu wechseln, nur `CONNECTION` ändern – der restliche
 | Joystick | `receive()` | `int` | X und Y als separate Element-IDs |
 | Input | `receive()` | `String` | Freier Text |
 | Color Picker | `receiveColor()` | `int` | 3 Variablen: `r`, `g`, `b` (je 0–255) |
+| Mode Selector | `receive()` | `int` | Ausgewählter Index (0–N); mit Option „Label senden": `String` (Label-Text) |
 
 ### Anzeigeelemente (MCU → App)
 
@@ -200,6 +201,44 @@ void loop() {
   analogWrite(PIN_B, b);
 }
 ```
+
+---
+
+### `receive()` – Mode Selector
+
+Der Mode Selector sendet bei jeder Auswahl den **Index** der gewählten Option (`0`, `1`, `2`, …) als `int`. Mit der Option **„Label senden"** in der App wird stattdessen der Label-Text als `String` übermittelt.
+
+```cpp
+// Standard: Index-Modus
+int betriebsModus = 0;
+
+// Mit Option „Label senden" aktiv:
+// String betriebsModus = "Aus";
+
+void setup() {
+  remote.begin();
+  remote.receive("modus", betriebsModus);
+}
+
+void loop() {
+  remote.handle();
+
+  // Index-Modus (0 = Aus, 1 = Langsam, 2 = Schnell):
+  switch (betriebsModus) {
+    case 0: /* Aus     */ break;
+    case 1: /* Langsam */ break;
+    case 2: /* Schnell */ break;
+  }
+
+  // Label-Modus:
+  // if (betriebsModus == "Langsam") { ... }
+}
+```
+
+| Einstellung | Typ | Empfangener Wert |
+|---|---|---|
+| Standard (Index) | `int` | `0`, `1`, `2`, … |
+| „Label senden" aktiv | `String` | `"Aus"`, `"Langsam"`, `"Schnell"`, … |
 
 ---
 
