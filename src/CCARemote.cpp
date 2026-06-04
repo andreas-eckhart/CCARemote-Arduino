@@ -285,8 +285,16 @@ void CCARemote::_resyncDisplay() {
     _stateLoaded = true;
   }
 #endif
+  // Kurze Pause zwischen den Resync-Nachrichten: der BLE-Notify-Puffer (ESP32)
+  // bzw. der HM-10-Sendepuffer (AVR) ist nur wenige Einträge tief. Ohne Drain-
+  // Pause läuft er bei einem Burst über und die LETZTE Nachricht (z. B. der
+  // Farbwert) wird auf manchen BLE-Stacks (z. B. Samsung/Exynos) verworfen.
+  // Einmalig beim Verbinden – Runtime-Sends bleiben unverzögert.
+  const unsigned long kResyncGap = 20;
+
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
+    delay(kResyncGap);
   }
 
   for (uint8_t i = 0; i < _recvCount; i++) {
@@ -298,6 +306,7 @@ void CCARemote::_resyncDisplay() {
       case _CCARecv::STRING_T: val = *((String*)_recv[i].ptr); break;
     }
     sendInternal(_recv[i].key, val);
+    delay(kResyncGap);
   }
 
   for (uint8_t i = 0; i < _colorRecvCount; i++) {
@@ -305,6 +314,7 @@ void CCARemote::_resyncDisplay() {
       String(*_colorRecv[i].r) + ";" +
       String(*_colorRecv[i].g) + ";" +
       String(*_colorRecv[i].b));
+    delay(kResyncGap);
   }
 
 #if defined(__AVR__)
