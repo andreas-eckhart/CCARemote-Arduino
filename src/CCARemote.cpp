@@ -25,6 +25,7 @@ CCARemote::CCARemote(String name, String prefix, CCADebugMode debugLevel, unsign
   _colorRecvCount  = 0;
   _displayCount    = 0;
   _pendingResync   = false;
+  _stateLoaded     = false;
   _watchdogCount   = 0;
   _watchdogFired   = 0;
 #if defined(__AVR__)
@@ -87,6 +88,7 @@ void CCARemote::receiveColor(String cmd, int& r, int& g, int& b, bool resync) {
 }
 
 void CCARemote::processCommand(const char* cmd) {
+  bool stateDirty = false;
   const char* p = cmd;
   while (*p) {
     const char* comma   = strchr(p, ',');
@@ -129,7 +131,7 @@ void CCARemote::processCommand(const char* cmd) {
             Serial.print(F(" G:"));   Serial.print(*_colorRecv[i].g);
             Serial.print(F(" B:"));   Serial.println(*_colorRecv[i].b);
           }
-          found = true; break;
+          stateDirty = true; found = true; break;
         }
       }
 
@@ -158,7 +160,7 @@ void CCARemote::processCommand(const char* cmd) {
               case _CCARecv::STRING_T:
                 *((String*)_recv[i].ptr) = String(valStr).substring(0, valLen); break;
             }
-            found = true; break;
+            stateDirty = true; found = true; break;
           }
         }
       }
@@ -219,6 +221,9 @@ void CCARemote::processCommand(const char* cmd) {
     if (!comma) break;
     p = comma + 1;
   }
+#ifndef CCA_NO_PERSIST
+  if (stateDirty) _saveState();
+#endif
 }
 
 void CCARemote::watchdog(String cmd, unsigned long timeoutMs) {
@@ -274,12 +279,17 @@ void CCARemote::_checkWatchdogs() {
 // ================================================================
 
 void CCARemote::_resyncDisplay() {
+#ifndef CCA_NO_PERSIST
+  if (!_stateLoaded) {
+    _loadState();
+    _stateLoaded = true;
+  }
+#endif
   for (uint8_t i = 0; i < _displayCount; i++) {
     sendInternal(_display[i].key, _display[i].value);
   }
 
   for (uint8_t i = 0; i < _recvCount; i++) {
-    if (!_recv[i].resync) continue;
     String val;
     switch (_recv[i].type) {
       case _CCARecv::INT_T:    val = String(*((int*)   _recv[i].ptr)); break;
@@ -291,7 +301,6 @@ void CCARemote::_resyncDisplay() {
   }
 
   for (uint8_t i = 0; i < _colorRecvCount; i++) {
-    if (!_colorRecv[i].resync) continue;
     sendInternal(_colorRecv[i].key,
       String(*_colorRecv[i].r) + ";" +
       String(*_colorRecv[i].g) + ";" +
@@ -302,6 +311,128 @@ void CCARemote::_resyncDisplay() {
   if (_profileConfigPtr != nullptr) _sendProfileConfig();
 #endif
 }
+
+#ifndef CCA_NO_PERSIST
+void CCARemote::_loadState() {
+#if defined(ESP32)
+  _prefs.begin("cca", true);
+  for (uint8_t i = 0; i < _recvCount; i++) {
+    const char* k = _recv[i].key.c_str();
+    if (!_prefs.isKey(k)) continue;
+    switch (_recv[i].type) {
+      case _CCARecv::INT_T:    *((int*)   _recv[i].ptr) = _prefs.getInt(k);    break;
+      case _CCARecv::BOOL_T:   *((bool*)  _recv[i].ptr) = _prefs.getBool(k);   break;
+      case _CCARecv::FLOAT_T:  *((float*) _recv[i].ptr) = _prefs.getFloat(k);  break;
+      case _CCARecv::STRING_T: *((String*)_recv[i].ptr) = _prefs.getString(k); break;
+    }
+  }
+  for (uint8_t i = 0; i < _colorRecvCount; i++) {
+    String kr = _colorRecv[i].key + "_r";
+    if (!_prefs.isKey(kr.c_str())) continue;
+    *_colorRecv[i].r = _prefs.getInt(kr.c_str());
+    *_colorRecv[i].g = _prefs.getInt((_colorRecv[i].key + "_g").c_str());
+    *_colorRecv[i].b = _prefs.getInt((_colorRecv[i].key + "_b").c_str());
+  }
+  _prefs.end();
+#elif defined(ESP8266) || defined(__AVR__)
+#if defined(ESP8266)
+  EEPROM.begin(CCA_EEPROM_SIZE);
+#endif
+  if (EEPROM.read(CCA_EEPROM_BASE) != CCA_EEPROM_MAGIC) return;
+  for (uint8_t i = 0; i < _recvCount; i++) {
+    uint16_t addr = CCA_EEPROM_RECV_OFF + i * CCA_RECV_SLOT_SZ;
+    if (EEPROM.read(addr) != (uint8_t)_recv[i].type) continue;
+    switch (_recv[i].type) {
+      case _CCARecv::INT_T:   { int   v; EEPROM.get(addr + 1, v); *((int*)  _recv[i].ptr) = v; } break;
+      case _CCARecv::BOOL_T:  *((bool*)_recv[i].ptr) = (EEPROM.read(addr + 1) != 0); break;
+      case _CCARecv::FLOAT_T: { float v; EEPROM.get(addr + 1, v); *((float*)_recv[i].ptr) = v; } break;
+      case _CCARecv::STRING_T: break;
+    }
+  }
+  for (uint8_t i = 0; i < _colorRecvCount; i++) {
+    uint16_t addr = (uint16_t)CCA_EEPROM_COLOR_OFF + i * (uint16_t)CCA_COLOR_SLOT_SZ;
+    int r, g, b;
+    EEPROM.get(addr,                   r);
+    EEPROM.get(addr + sizeof(int),     g);
+    EEPROM.get(addr + 2 * sizeof(int), b);
+    *_colorRecv[i].r = r; *_colorRecv[i].g = g; *_colorRecv[i].b = b;
+  }
+#endif
+}
+
+void CCARemote::_saveState() {
+#if defined(ESP32)
+  _prefs.begin("cca", false);
+  for (uint8_t i = 0; i < _recvCount; i++) {
+    const char* k = _recv[i].key.c_str();
+    switch (_recv[i].type) {
+      case _CCARecv::INT_T:    _prefs.putInt(k,    *((int*)   _recv[i].ptr)); break;
+      case _CCARecv::BOOL_T:   _prefs.putBool(k,   *((bool*)  _recv[i].ptr)); break;
+      case _CCARecv::FLOAT_T:  _prefs.putFloat(k,  *((float*) _recv[i].ptr)); break;
+      case _CCARecv::STRING_T: _prefs.putString(k, *((String*)_recv[i].ptr)); break;
+    }
+  }
+  for (uint8_t i = 0; i < _colorRecvCount; i++) {
+    _prefs.putInt((_colorRecv[i].key + "_r").c_str(), *_colorRecv[i].r);
+    _prefs.putInt((_colorRecv[i].key + "_g").c_str(), *_colorRecv[i].g);
+    _prefs.putInt((_colorRecv[i].key + "_b").c_str(), *_colorRecv[i].b);
+  }
+  _prefs.end();
+#elif defined(ESP8266)
+  EEPROM.write(CCA_EEPROM_BASE, CCA_EEPROM_MAGIC);
+  for (uint8_t i = 0; i < _recvCount; i++) {
+    uint16_t addr = CCA_EEPROM_RECV_OFF + i * CCA_RECV_SLOT_SZ;
+    EEPROM.write(addr, (uint8_t)_recv[i].type);
+    switch (_recv[i].type) {
+      case _CCARecv::INT_T:   { int   v = *((int*)  _recv[i].ptr); EEPROM.put(addr + 1, v); } break;
+      case _CCARecv::BOOL_T:  EEPROM.write(addr + 1, *((bool*)_recv[i].ptr) ? 1 : 0); break;
+      case _CCARecv::FLOAT_T: { float v = *((float*)_recv[i].ptr); EEPROM.put(addr + 1, v); } break;
+      case _CCARecv::STRING_T: break;
+    }
+  }
+  for (uint8_t i = 0; i < _colorRecvCount; i++) {
+    uint16_t addr = (uint16_t)CCA_EEPROM_COLOR_OFF + i * (uint16_t)CCA_COLOR_SLOT_SZ;
+    int r = *_colorRecv[i].r, g = *_colorRecv[i].g, b = *_colorRecv[i].b;
+    EEPROM.put(addr,                   r);
+    EEPROM.put(addr + sizeof(int),     g);
+    EEPROM.put(addr + 2 * sizeof(int), b);
+  }
+  EEPROM.commit();
+#elif defined(__AVR__)
+  EEPROM.update(CCA_EEPROM_BASE, CCA_EEPROM_MAGIC);
+  for (uint8_t i = 0; i < _recvCount; i++) {
+    uint16_t addr = CCA_EEPROM_RECV_OFF + i * CCA_RECV_SLOT_SZ;
+    EEPROM.update(addr, (uint8_t)_recv[i].type);
+    switch (_recv[i].type) {
+      case _CCARecv::INT_T:   { int   v = *((int*)  _recv[i].ptr); EEPROM.put(addr + 1, v); } break;
+      case _CCARecv::BOOL_T:  EEPROM.update(addr + 1, *((bool*)_recv[i].ptr) ? 1 : 0); break;
+      case _CCARecv::FLOAT_T: { float v = *((float*)_recv[i].ptr); EEPROM.put(addr + 1, v); } break;
+      case _CCARecv::STRING_T: break;
+    }
+  }
+  for (uint8_t i = 0; i < _colorRecvCount; i++) {
+    uint16_t addr = (uint16_t)CCA_EEPROM_COLOR_OFF + i * (uint16_t)CCA_COLOR_SLOT_SZ;
+    int r = *_colorRecv[i].r, g = *_colorRecv[i].g, b = *_colorRecv[i].b;
+    EEPROM.put(addr,                   r);
+    EEPROM.put(addr + sizeof(int),     g);
+    EEPROM.put(addr + 2 * sizeof(int), b);
+  }
+#endif
+}
+void CCARemote::clearState() {
+#if defined(ESP32)
+  _prefs.begin("cca", false);
+  _prefs.clear();
+  _prefs.end();
+#elif defined(ESP8266)
+  EEPROM.begin(CCA_EEPROM_SIZE);
+  EEPROM.write(CCA_EEPROM_BASE, 0x00);
+  EEPROM.commit();
+#elif defined(__AVR__)
+  EEPROM.update(CCA_EEPROM_BASE, 0x00);
+#endif
+}
+#endif // CCA_NO_PERSIST
 
 void CCARemote::debug(CCADebugMode mode, unsigned long baudRate) {
   debugMode = mode;

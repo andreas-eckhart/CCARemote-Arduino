@@ -15,12 +15,23 @@
 #define CCAREMOTE_BASE_H
 
 // Version der Bibliothek
-#define CCA_LIB_VERSION      "1.2.0"
+#define CCA_LIB_VERSION      "1.2.1"
 // Protokollversion – wird nur bei Breaking Changes erhöht
 #define CCA_PROTOCOL_VERSION "2"
 #define CCA_PLATFORM         "arduino"
 
 #include <Arduino.h>
+
+// ================================================================
+//  Persistente Zustandsspeicherung (mit #define CCA_NO_PERSIST deaktivierbar)
+// ================================================================
+#ifndef CCA_NO_PERSIST
+  #if defined(ESP32)
+    #include <Preferences.h>
+  #elif defined(ESP8266) || defined(__AVR__)
+    #include <EEPROM.h>
+  #endif
+#endif
 
 // Debug-Modus Flags
 enum CCADebugMode {
@@ -62,6 +73,21 @@ enum CCADebugMode {
   #endif
 #endif
 
+// ================================================================
+//  EEPROM-Konstanten (AVR + ESP8266, nach MAX-Defines)
+// ================================================================
+#ifndef CCA_NO_PERSIST
+  #if defined(ESP8266) || defined(__AVR__)
+    #define CCA_EEPROM_MAGIC     0xCA
+    #define CCA_EEPROM_BASE      0
+    #define CCA_RECV_SLOT_SZ     5                // type(1) + value(4)
+    #define CCA_COLOR_SLOT_SZ    (3 * sizeof(int))
+    #define CCA_EEPROM_RECV_OFF  (CCA_EEPROM_BASE + 1)
+    #define CCA_EEPROM_COLOR_OFF (CCA_EEPROM_RECV_OFF + CCA_MAX_RECEIVERS * CCA_RECV_SLOT_SZ)
+    #define CCA_EEPROM_SIZE      (CCA_EEPROM_COLOR_OFF + CCA_MAX_COLOR * CCA_COLOR_SLOT_SZ)
+  #endif
+#endif
+
 struct _CCACmd  { String key; void (*fn)(); };
 struct _CCACmdV { String key; void (*fn)(String); };
 
@@ -100,6 +126,9 @@ class CCARemote {
     void watchdog(String cmd, unsigned long timeoutMs);
 
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
+#ifndef CCA_NO_PERSIST
+    void clearState();
+#endif
 
     // AVR: pointer only – no RAM copy. ESP32/non-AVR: copy into _display as usual.
 #if defined(__AVR__)
@@ -146,10 +175,15 @@ class CCARemote {
 
     void processCommand(const char* cmd);
     void _resyncDisplay();
+#ifndef CCA_NO_PERSIST
+    void _loadState();
+    void _saveState();
+#endif
     void _sendIfChanged(String key, String value);
     void _sendAlways(String key, String value);
     void _checkWatchdogs();
     bool _pendingResync;
+    bool _stateLoaded;
     virtual void sendInternal(String key, String value) = 0;
 #if defined(__AVR__)
     // Streams profileConfig from PROGMEM/RAM without heap allocation.
@@ -163,6 +197,11 @@ class CCARemote {
     uint8_t     _displayCount;
 
   private:
+#ifndef CCA_NO_PERSIST
+  #if defined(ESP32)
+    Preferences   _prefs;
+  #endif
+#endif
     _CCACmd       _cmds[CCA_MAX_CALLBACKS];
     _CCACmdV      _cmdsV[CCA_MAX_CALLBACKS];
     uint8_t       _cmdCount;

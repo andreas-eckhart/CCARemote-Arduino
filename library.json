@@ -1,6 +1,6 @@
 {
     "name": "CCARemote",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "Flexible BLE & WiFi control of ESP32, ESP8266 and Arduino via the CCA Remote app (HTL Anichstraße Innsbruck)",
     "keywords": "BLE, WiFi, dashboard, ESP32, Arduino, ESP8266",
     "authors": [

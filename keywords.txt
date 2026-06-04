@@ -1,12 +1,37 @@
+# CCARemote Arduino Library – Keywords
+# Syntax: KEYWORD1 = Klassen/Typen  |  KEYWORD2 = Methoden  |  LITERAL1 = Konstanten
+
+#######################################
+# Klassen
+#######################################
+
 CCARemote	KEYWORD1
 CCARemoteBLE	KEYWORD1
 CCARemoteWiFi	KEYWORD1
-CCARemoteMQTT	KEYWORD1
+CCADebugMode	KEYWORD1
+
+#######################################
+# Methoden
+#######################################
+
 begin	KEYWORD2
 handle	KEYWORD2
 isConnected	KEYWORD2
-onCommand	KEYWORD2
 receive	KEYWORD2
 receiveColor	KEYWORD2
-debug	KEYWORD2
 send	KEYWORD2
+sendAlways	KEYWORD2
+setProfile	KEYWORD2
+watchdog	KEYWORD2
+clearState	KEYWORD2
+onCommand	KEYWORD2
+debug	KEYWORD2
+
+#######################################
+# Konstanten
+#######################################
+
+CCA_DEBUG_OFF	LITERAL1
+CCA_DEBUG_IN	LITERAL1
+CCA_DEBUG_OUT	LITERAL1
+CCA_DEBUG_ALL	LITERAL1

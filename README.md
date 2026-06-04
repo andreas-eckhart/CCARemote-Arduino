@@ -271,6 +271,44 @@ zurückgefallen ist.
 
 ---
 
+### Persistente Zustandsspeicherung
+
+Variablenwerte werden automatisch gespeichert und beim nächsten Start wiederhergestellt — auch nach Neustart oder Stromverlust. Kein extra Code nötig:
+
+```cpp
+int  speed = 0;
+bool power = false;
+
+void setup() {
+  remote.begin();
+  remote.receive("speed", speed);  // wird automatisch gespeichert und geladen
+  remote.receive("power", power);
+}
+```
+
+| Plattform | Speicher | String-Persistenz |
+|---|---|---|
+| ESP32 | NVS (`Preferences`) | ✅ |
+| ESP8266 | EEPROM (Flash-emuliert) | ❌ |
+| AVR (Uno/Nano) | Hardware-EEPROM | ❌ |
+
+**Deaktivieren:** Vor `#include <CCARemote.h>` einfügen:
+
+```cpp
+#define CCA_NO_PERSIST
+#include <CCARemote.h>
+```
+
+**Persistierten Zustand löschen:** Beim Wechsel zu einem Profil mit anderen Element-IDs können veraltete Einträge im NVS / EEPROM gelöscht werden:
+
+```cpp
+remote.clearState();  // löscht alle persistierten Werte
+```
+
+> **Hinweis:** `clearState()` ist nicht verfügbar wenn `CCA_NO_PERSIST` gesetzt ist.
+
+---
+
 ### `onCommand()` – Callback bei Empfang *(für komplexe Logik)*
 
 ```cpp
