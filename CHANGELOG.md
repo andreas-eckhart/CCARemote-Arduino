@@ -1,11 +1,11 @@
 # Changelog
 
 Alle wesentlichen Änderungen werden in dieser Datei dokumentiert.
-Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
+Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ---
 
-## [1.2.1] – 2026-06-04
+## [1.2.1] – 2026-06-06
 
 ### Neu
 - **Persistente Zustandsspeicherung:** Variablenwerte (`receive()`, `receiveColor()`) werden automatisch gespeichert und nach einem Neustart oder Stromverlust wiederhergestellt.
@@ -17,6 +17,7 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   - `_saveState()` wird nach jeder Wertänderung in `processCommand()` aufgerufen
 - **Vollständiger Resync beim Connect:** `_resyncDisplay()` sendet nun alle registrierten Variablenwerte an die App – nicht mehr nur Variablen mit `resync=true`.
 - **`clearState()`:** Löscht alle persistierten Werte (NVS-Namespace / EEPROM-Magic). Nützlich beim Wechsel zu einem Profil mit anderen Element-IDs, um veraltete Einträge zu entfernen.
+- **`loadState()`:** Lädt den letzten gespeicherten Zustand sofort beim Start, ohne auf eine App-Verbindung warten zu müssen. Muss nach allen `receive()`-Aufrufen in `setup()` aufgerufen werden. Ohne diesen Aufruf ist das Verhalten wie bisher: Laden beim ersten App-Connect.
 
 ### Technische Details
 - EEPROM-Layout (AVR/ESP8266): `[magic(1)] + [type(1)+value(4)] × CCA_MAX_RECEIVERS + [r+g+b als int] × CCA_MAX_COLOR`

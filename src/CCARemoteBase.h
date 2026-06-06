@@ -128,6 +128,7 @@ class CCARemote {
     void debug(CCADebugMode mode = CCA_DEBUG_ALL, unsigned long baudRate = 9600);
 #ifndef CCA_NO_PERSIST
     void clearState();
+    void loadState();
 #endif
 
     // AVR: pointer only – no RAM copy. ESP32/non-AVR: copy into _display as usual.

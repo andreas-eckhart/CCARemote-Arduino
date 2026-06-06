@@ -299,6 +299,23 @@ void setup() {
 #include <CCARemote.h>
 ```
 
+**Letzten Zustand beim Start laden:** Standardmäßig werden die gespeicherten Werte erst beim ersten App-Connect in die Variablen geladen. Mit `loadState()` kann der Zustand bereits in `setup()` befüllt werden — ohne dass eine Verbindung nötig ist. Nützlich wenn der Controller ohne App sofort mit den letzten Einstellungen laufen soll (z. B. Licht, Effekt, Farbe):
+
+```cpp
+void setup() {
+  remote.begin();
+
+  remote.receive("switch1", switch1, true);
+  remote.receive("slider1", slider1, true);
+  remote.receiveColor("color1", r, g, b, true);
+
+  remote.loadState();  // letzte Einstellungen sofort laden
+                       // Ohne diese Zeile: Laden beim ersten App-Connect (bisheriges Verhalten)
+}
+```
+
+> **Hinweis:** `loadState()` muss nach allen `receive()`-Aufrufen und vor der Hauptschleife aufgerufen werden. `loadState()` ist nicht verfügbar wenn `CCA_NO_PERSIST` gesetzt ist.
+
 **Persistierten Zustand löschen:** Beim Wechsel zu einem Profil mit anderen Element-IDs können veraltete Einträge im NVS / EEPROM gelöscht werden:
 
 ```cpp

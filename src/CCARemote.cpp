@@ -429,6 +429,10 @@ void CCARemote::_saveState() {
   }
 #endif
 }
+void CCARemote::loadState() {
+  _loadState();
+  _stateLoaded = true;
+}
 void CCARemote::clearState() {
 #if defined(ESP32)
   _prefs.begin("cca", false);
