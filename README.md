@@ -46,22 +46,24 @@ Die Bibliothek ist im Arduino IDE und PlatformIO Bibliothek-Manager unter dem Na
 
 #include <CCARemote.h>
 
+const int LED_PIN = 2;  // GPIO-Pin anpassen (ESP32 DevKit: 2, Uno/Nano: 13)
+
 bool switch_led = false;
 
 void setup() {
   remote.begin();
 
   remote.receive("switch1", switch_led);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
 }
 
 void loop() {
   remote.handle();
 
   if (remote.isConnected()) {
-    digitalWrite(LED_BUILTIN, switch_led ? HIGH : LOW);
+    digitalWrite(LED_PIN, switch_led ? HIGH : LOW);
   } else {
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_PIN, LOW);
   }
 }
 ```
