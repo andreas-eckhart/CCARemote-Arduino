@@ -1,7 +1,7 @@
 # CCARemote – Arduino Bibliothek
 
 Flexible Steuerung von Mikrocontrollern über Bluetooth Low Energy (BLE) oder WLAN (WiFi). Die erforderliche App **CCA Remote** ist für Android und iOS kostenlos verfügbar.
-Dieses Projekt wurde von der HTL Anichstraße (Abteilung Wirtschaftsingenieure – Betriebsinformatik) entwickelt.
+Dieses Projekt wurde von der HTL Anichstraße entwickelt.
 
 Unterstützte Protokolle:
 - **Bluetooth Low Energy (BLE)**
