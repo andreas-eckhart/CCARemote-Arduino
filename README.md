@@ -16,7 +16,7 @@ Unterstützte Hardware:
 | Arduino Uno / Nano | 🟢 ¹ | ❌ |
 | Raspberry Pi Pico 2W | 🟢 ² | 🟢 ² |
 
-¹ Externes HM-10 BLE-Modul erforderlich.  
+¹ Erfordert externes HM-10 BLE-Modul (wird nicht mehr weiterentwickelt, bleibt aber im aktuellen Ist-Zustand nutzbar).  
 ² Erfordert die [CCARemote-MicroPython](https://github.com/ccaprojects/CCARemote-MicroPython) Bibliothek.
 
 ---
@@ -535,6 +535,8 @@ void loop() {
 
 ## Arduino Uno / Nano mit HM-10-Modul
 
+**Die HM-10 BLE-Unterstützung wird nicht mehr weiterentwickelt, bleibt aber im aktuellen Ist-Zustand nutzbar.**
+
 Für Arduino Uno und Nano wird `CONNECTION CCA_BLE` automatisch über ein HM-10-Modul per SoftwareSerial abgewickelt. Die Pin-Konfiguration erfolgt ebenfalls über `#define`:
 
 ```cpp
@@ -634,7 +636,7 @@ remote.setProfile(F("v:2|nm:MeinProfil|sl:speed:0:255@0,0,200,60,0,0,200,60"));
 - **Arduino IDE:** 2.x empfohlen
 - **ESP8266-Paket:** Boardverwalter → `esp8266` von Community
 
-### Arduino Uno / Nano + HM-10
+### Arduino Uno / Nano + HM-10 (wird nicht mehr weiterentwickelt, bleibt aber im aktuellen Ist-Zustand nutzbar)
 
 - **Board:** Arduino Uno oder Nano (ATmega328P)
 - **Arduino IDE:** 2.x empfohlen
